@@ -1,4 +1,5 @@
 import pytensor.tensor as pt
+from pytensor.tensor.special import betaln
 from pytensor.tensor.xlogx import xlogy0
 
 from pytensor_distributions.helper import cdf_bounds, ppf_bounds_cont, sf_bounds
@@ -43,6 +44,36 @@ def kurtosis(a, b):
     m_3 = b * pt.exp(pt.gammaln(1 + 3 / a) + pt.gammaln(b) - pt.gammaln(1 + 3 / a + b))
     m_4 = b * pt.exp(pt.gammaln(1 + 4 / a) + pt.gammaln(b) - pt.gammaln(1 + 4 / a + b))
     return (m_4 + m_1 * (-4 * m_3 + m_1 * (6 * m_2 - 3 * m_1**2))) / variance**2 - 3
+
+
+def lmoment1(a, b):
+    return mean(a, b)
+
+
+def lmoment2(a, b):
+    inv_a = 1.0 / a
+    term1 = b * pt.exp(betaln(1.0 + inv_a, b))
+    term2 = 2.0 * b * pt.exp(betaln(1.0 + inv_a, 2.0 * b))
+    return term1 - term2
+
+
+def lmoment3(a, b):
+    inv_a = 1.0 / a
+    l2 = lmoment2(a, b)
+    term1 = b * pt.exp(betaln(1.0 + inv_a, b))
+    term2 = 6.0 * b * pt.exp(betaln(1.0 + inv_a, 2.0 * b))
+    term3 = 6.0 * b * pt.exp(betaln(1.0 + inv_a, 3.0 * b))
+    return (term1 - term2 + term3) / l2
+
+
+def lmoment4(a, b):
+    inv_a = 1.0 / a
+    l2 = lmoment2(a, b)
+    term1 = b * pt.exp(betaln(1.0 + inv_a, b))
+    term2 = 12.0 * b * pt.exp(betaln(1.0 + inv_a, 2.0 * b))
+    term3 = 30.0 * b * pt.exp(betaln(1.0 + inv_a, 3.0 * b))
+    term4 = 20.0 * b * pt.exp(betaln(1.0 + inv_a, 4.0 * b))
+    return (term1 - term2 + term3 - term4) / l2
 
 
 def entropy(a, b):

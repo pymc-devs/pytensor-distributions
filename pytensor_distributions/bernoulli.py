@@ -33,6 +33,22 @@ def kurtosis(p):
     return (1 - 6 * p * (1 - p)) / (p * (1 - p))
 
 
+def lmoment1(p):
+    return mean(p)
+
+
+def lmoment2(p):
+    return p * (1 - p)
+
+
+def lmoment3(p):
+    return 1 - 2 * p
+
+
+def lmoment4(p):
+    return 1 - 5 * p * (1 - p)
+
+
 def entropy(p):
     q = 1 - p
     return -xlogx(p) - xlogx(q)

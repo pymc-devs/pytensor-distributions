@@ -2,6 +2,7 @@ import pytensor.tensor as pt
 from pytensor.tensor.xlogx import xlogy0
 
 from pytensor_distributions.helper import cdf_bounds, ppf_bounds_cont
+from pytensor_distributions.lmoments import _lmoments
 
 
 def mean(nu):
@@ -30,6 +31,22 @@ def skewness(nu):
 
 def kurtosis(nu):
     return 12 / nu
+
+
+def lmoment1(nu):
+    return mean(nu)
+
+
+def lmoment2(nu):
+    return _lmoments(ppf, nu, r=2)
+
+
+def lmoment3(nu):
+    return _lmoments(ppf, nu, r=3)
+
+
+def lmoment4(nu):
+    return _lmoments(ppf, nu, r=4)
 
 
 def entropy(nu):

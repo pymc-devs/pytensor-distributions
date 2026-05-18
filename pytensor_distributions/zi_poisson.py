@@ -2,6 +2,7 @@ import pytensor.tensor as pt
 
 from pytensor_distributions import poisson as Poisson
 from pytensor_distributions.helper import cdf_bounds, discrete_entropy, sf_bounds, zi_mode
+from pytensor_distributions.lmoments import _lmoments
 from pytensor_distributions.optimization import find_ppf_discrete
 
 
@@ -49,6 +50,22 @@ def kurtosis(psi, mu):
     mu4 = ex4 - 4 * mu_val * ex3 + 6 * pt.power(mu_val, 2) * ex2 - 3 * pt.power(mu_val, 4)
 
     return mu4 / pt.power(mu2, 2) - 3
+
+
+def lmoment1(psi, mu):
+    return mean(psi, mu)
+
+
+def lmoment2(psi, mu):
+    return _lmoments(ppf, psi, mu, r=2)
+
+
+def lmoment3(psi, mu):
+    return _lmoments(ppf, psi, mu, r=3)
+
+
+def lmoment4(psi, mu):
+    return _lmoments(ppf, psi, mu, r=4)
 
 
 def entropy(psi, mu):

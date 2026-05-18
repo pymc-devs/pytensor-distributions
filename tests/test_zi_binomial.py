@@ -7,6 +7,7 @@ from numpy.testing import assert_allclose
 from scipy.stats import kurtosis, skew
 
 from pytensor_distributions import zi_binomial as ZIBinomial
+from tests.helper_scipy import run_lmoments_test
 
 
 def make_params(psi, n, p):
@@ -191,3 +192,16 @@ def test_zi_binomial_bounds(params):
     outside_vals = np.array([-1, -2, n + 1, n + 2])
     pmf_outside = ZIBinomial.pdf(outside_vals, *p_params).eval()
     assert_allclose(pmf_outside, 0.0, atol=1e-10, err_msg="PMF should be 0 outside support")
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        (0.7, 10, 0.3),
+        (0.9, 20, 0.5),
+    ],
+)
+def test_zi_binomial_lmoments(params):
+    psi, n, p = params
+    p_params = make_params(psi, n, p)
+    run_lmoments_test(p_dist=ZIBinomial, p_params=p_params, name="zi_binomial")

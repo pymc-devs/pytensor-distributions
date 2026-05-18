@@ -36,6 +36,39 @@ def kurtosis(mu, b, kappa):
     return 6.0 * (1 + pt.power(kappa, 8)) / pt.power(1 + pt.power(kappa, 4), 2)
 
 
+def lmoment1(mu, b, kappa):
+    return mean(mu, b, kappa)
+
+
+def lmoment2(mu, b, kappa):
+    shape = pt.broadcast_arrays(mu, b, kappa)[0]
+    kappa_sq = kappa**2
+    num = b * (1.0 + kappa_sq + kappa_sq**2)
+    denom = 2.0 * kappa * (1.0 + kappa_sq)
+    return pt.full_like(shape, num / denom)
+
+
+def lmoment3(mu, b, kappa):
+    shape = pt.broadcast_arrays(mu, b, kappa)[0]
+    kappa_sq = kappa**2
+    kappa_four = kappa_sq**2
+    kappa_six = kappa_sq * kappa_four
+    num = 1.0 + 2.0 * kappa_sq - 2.0 * kappa_four - kappa_six
+    denom = 3.0 * (1.0 + 2.0 * kappa_sq + 2.0 * kappa_four + kappa_six)
+    return pt.full_like(shape, num / denom)
+
+
+def lmoment4(mu, b, kappa):
+    shape = pt.broadcast_arrays(mu, b, kappa)[0]
+    kappa_sq = kappa**2
+    kappa_four = kappa_sq**2
+    kappa_six = kappa_sq * kappa_four
+    kappa_eight = kappa_four**2
+    num = 1.0 + 3.0 * kappa_sq + 9.0 * kappa_four + 3.0 * kappa_six + kappa_eight
+    denom = 6.0 * (1.0 + 3.0 * kappa_sq + 4.0 * kappa_four + 3.0 * kappa_six + kappa_eight)
+    return pt.full_like(shape, num / denom)
+
+
 def entropy(mu, b, kappa):
     return 1 + pt.log(kappa + 1 / kappa) + pt.log(b)
 

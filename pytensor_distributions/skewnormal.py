@@ -1,6 +1,7 @@
 import pytensor.tensor as pt
 
 from pytensor_distributions.halfnormal import entropy as halfnormal_entropy
+from pytensor_distributions.lmoments import _lmoments
 from pytensor_distributions.normal import entropy as normal_entropy
 from pytensor_distributions.optimization import find_ppf
 
@@ -47,6 +48,22 @@ def kurtosis(mu, sigma, alpha):
     mean_z = delta * pt.sqrt(2 / pt.pi)
     var_z = 1 - 2 * delta**2 / pt.pi
     return 2 * (pt.pi - 3) * (mean_z**4 / var_z**2)
+
+
+def lmoment1(mu, sigma, alpha):
+    return mean(mu, sigma, alpha)
+
+
+def lmoment2(mu, sigma, alpha):
+    return _lmoments(ppf, mu, sigma, alpha, r=2)
+
+
+def lmoment3(mu, sigma, alpha):
+    return _lmoments(ppf, mu, sigma, alpha, r=3)
+
+
+def lmoment4(mu, sigma, alpha):
+    return _lmoments(ppf, mu, sigma, alpha, r=4)
 
 
 def entropy(mu, sigma, alpha):

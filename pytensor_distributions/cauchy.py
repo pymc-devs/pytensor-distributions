@@ -36,6 +36,26 @@ def kurtosis(alpha, beta):
     return pt.full_like(alpha_b, pt.nan)
 
 
+def lmoment1(alpha, beta):
+    alpha_b, _ = pt.broadcast_arrays(alpha, beta)
+    return pt.full_like(alpha_b, pt.nan)
+
+
+def lmoment2(alpha, beta):
+    alpha_b, _ = pt.broadcast_arrays(alpha, beta)
+    return pt.full_like(alpha_b, pt.nan)
+
+
+def lmoment3(alpha, beta):
+    alpha_b, _ = pt.broadcast_arrays(alpha, beta)
+    return pt.full_like(alpha_b, pt.nan)
+
+
+def lmoment4(alpha, beta):
+    alpha_b, _ = pt.broadcast_arrays(alpha, beta)
+    return pt.full_like(alpha_b, pt.nan)
+
+
 def entropy(alpha, beta):
     _, beta_b = pt.broadcast_arrays(alpha, beta)
     return pt.log(4 * pt.pi * beta_b)

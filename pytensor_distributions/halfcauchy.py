@@ -31,6 +31,22 @@ def kurtosis(beta):
     return pt.full_like(beta, pt.nan)
 
 
+def lmoment1(beta):
+    return mean(beta)
+
+
+def lmoment2(beta):
+    return pt.full_like(beta, pt.inf)
+
+
+def lmoment3(beta):
+    return pt.full_like(beta, pt.inf)
+
+
+def lmoment4(beta):
+    return pt.full_like(beta, pt.inf)
+
+
 def entropy(beta):
     return pt.log(2 * pt.pi * beta)
 

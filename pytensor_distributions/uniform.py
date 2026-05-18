@@ -34,6 +34,24 @@ def kurtosis(lower, upper):
     return pt.full_like(shape, -6 / 5)
 
 
+def lmoment1(lower, upper):
+    return mean(lower, upper)
+
+
+def lmoment2(lower, upper):
+    return (upper - lower) / 6
+
+
+def lmoment3(lower, upper):
+    shape = pt.broadcast_arrays(lower, upper)[0]
+    return pt.zeros_like(shape)
+
+
+def lmoment4(lower, upper):
+    shape = pt.broadcast_arrays(lower, upper)[0]
+    return pt.zeros_like(shape)
+
+
 def entropy(lower, upper):
     return pt.log(upper - lower)
 

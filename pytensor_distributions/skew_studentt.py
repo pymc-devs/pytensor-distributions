@@ -3,6 +3,7 @@ from pytensor.tensor.math import betaincinv
 from pytensor.tensor.special import betaln
 
 from pytensor_distributions.helper import continuous_entropy, continuous_mode, ppf_bounds_cont
+from pytensor_distributions.lmoments import _lmoments
 
 
 def _raw_moment(n, a, b):
@@ -92,6 +93,25 @@ def kurtosis(a, b, mu, sigma):
     fourth_central = e_z4 - 4 * e_z * e_z3 + 6 * e_z**2 * e_z2 - 3 * e_z**4
     result = fourth_central / var_z**2 - 3
     return pt.switch((a_b > 2) & (b_b > 2), result, pt.nan)
+
+
+def lmoment1(a, b, mu, sigma):
+    return mean(a, b, mu, sigma)
+
+
+def lmoment2(a, b, mu, sigma):
+    a_b, b_b, mu_b, sigma_b = pt.broadcast_arrays(a, b, mu, sigma)
+    return pt.switch((a_b > 0.5) & (b_b > 0.5), _lmoments(ppf, a, b, mu, sigma, r=2), pt.nan)
+
+
+def lmoment3(a, b, mu, sigma):
+    a_b, b_b, mu_b, sigma_b = pt.broadcast_arrays(a, b, mu, sigma)
+    return pt.switch((a_b > 0.5) & (b_b > 0.5), _lmoments(ppf, a, b, mu, sigma, r=3), pt.nan)
+
+
+def lmoment4(a, b, mu, sigma):
+    a_b, b_b, mu_b, sigma_b = pt.broadcast_arrays(a, b, mu, sigma)
+    return pt.switch((a_b > 0.5) & (b_b > 0.5), _lmoments(ppf, a, b, mu, sigma, r=4), pt.nan)
 
 
 def entropy(a, b, mu, sigma):

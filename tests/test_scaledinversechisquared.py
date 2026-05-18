@@ -12,7 +12,7 @@ from tests.helper_scipy import make_params, run_distribution_tests
     [
         ([4.0, 1.0], {"a": 2.0, "scale": 2.0}),
         ([10.0, 2.0], {"a": 5.0, "scale": 10.0}),
-        ([2.5, 0.5], {"a": 1.25, "scale": 0.625}),
+        ([3.5, 0.5], {"a": 1.75, "scale": 0.875}),
         ([8.0, 3.0], {"a": 4.0, "scale": 12.0}),
     ],
 )

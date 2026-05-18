@@ -7,6 +7,7 @@ from numpy.testing import assert_allclose
 
 from pytensor_distributions import zi_poisson as ZIPoisson
 from tests.helper_empirical import run_empirical_tests
+from tests.helper_scipy import run_lmoments_test
 
 
 def make_params(*values, dtype="float64"):
@@ -161,3 +162,16 @@ def test_zi_poisson_reduces_to_poisson():
     zi_cdf = ZIPoisson.cdf(x_vals, *p_params).eval()
     poisson_cdf = Poisson.cdf(x_vals, *poisson_params).eval()
     assert_allclose(zi_cdf, poisson_cdf, rtol=1e-6, err_msg="ZI-Poisson CDF(psi=1) != Poisson CDF")
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        (0.7, 2.0),
+        (0.5, 5.0),
+    ],
+)
+def test_zi_poisson_lmoments(params):
+    psi, mu = params
+    p_params = make_params(psi, mu)
+    run_lmoments_test(p_dist=ZIPoisson, p_params=p_params, name="zi_poisson")

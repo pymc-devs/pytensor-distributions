@@ -2,6 +2,7 @@ import pytensor.tensor as pt
 
 from pytensor_distributions import negativebinomial as NegativeBinomial
 from pytensor_distributions.helper import cdf_bounds, discrete_entropy, sf_bounds, zi_mode
+from pytensor_distributions.lmoments import _lmoments
 from pytensor_distributions.optimization import find_ppf_discrete
 
 
@@ -71,6 +72,22 @@ def kurtosis(psi, n, p):
     mu4 = ex4 - 4 * mu_val * ex3 + 6 * pt.power(mu_val, 2) * ex2 - 3 * pt.power(mu_val, 4)
 
     return mu4 / pt.power(mu2, 2) - 3
+
+
+def lmoment1(psi, n, p):
+    return mean(psi, n, p)
+
+
+def lmoment2(psi, n, p):
+    return _lmoments(ppf, psi, n, p, r=2)
+
+
+def lmoment3(psi, n, p):
+    return _lmoments(ppf, psi, n, p, r=3)
+
+
+def lmoment4(psi, n, p):
+    return _lmoments(ppf, psi, n, p, r=4)
 
 
 def entropy(psi, n, p):

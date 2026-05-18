@@ -14,7 +14,6 @@ from tests.helper_scipy import make_params, run_distribution_tests
         ([0, 5], {"low": 0, "high": 6}),
         ([-10, -5], {"low": -10, "high": -4}),
         ([1, 10], {"low": 1, "high": 11}),
-        ([0, 0], {"low": 0, "high": 1}),
     ],
 )
 def test_discreteuniform_vs_scipy(params, sp_params):

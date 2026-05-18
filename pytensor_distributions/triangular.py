@@ -1,5 +1,7 @@
 import pytensor.tensor as pt
 
+from pytensor_distributions.lmoments import _lmoments
+
 
 def mean(lower, c, upper):
     return (lower + c + upper) / 3
@@ -34,6 +36,22 @@ def skewness(lower, c, upper):
 def kurtosis(lower, c, upper):
     shape = pt.broadcast_arrays(lower, c, upper)[0]
     return pt.full_like(shape, -3 / 5)
+
+
+def lmoment1(lower, c, upper):
+    return mean(lower, c, upper)
+
+
+def lmoment2(lower, c, upper):
+    return _lmoments(ppf, lower, c, upper, r=2)
+
+
+def lmoment3(lower, c, upper):
+    return _lmoments(ppf, lower, c, upper, r=3)
+
+
+def lmoment4(lower, c, upper):
+    return _lmoments(ppf, lower, c, upper, r=4)
 
 
 def entropy(lower, c, upper):

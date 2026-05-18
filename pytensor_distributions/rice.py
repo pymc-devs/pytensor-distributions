@@ -8,6 +8,7 @@ from pytensor_distributions.helper import (
     continuous_skewness,
     marcum_q1_complement,
 )
+from pytensor_distributions.lmoments import _lmoments
 from pytensor_distributions.optimization import find_ppf
 
 
@@ -54,6 +55,22 @@ def skewness(nu, sigma):
 
 def kurtosis(nu, sigma):
     return continuous_kurtosis(_lower_bound(), _upper_bound(nu, sigma), logpdf, nu, sigma)
+
+
+def lmoment1(nu, sigma):
+    return mean(nu, sigma)
+
+
+def lmoment2(nu, sigma):
+    return _lmoments(ppf, nu, sigma, r=2)
+
+
+def lmoment3(nu, sigma):
+    return _lmoments(ppf, nu, sigma, r=3)
+
+
+def lmoment4(nu, sigma):
+    return _lmoments(ppf, nu, sigma, r=4)
 
 
 def entropy(nu, sigma):

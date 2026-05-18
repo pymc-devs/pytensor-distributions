@@ -7,6 +7,7 @@ from numpy.testing import assert_allclose
 from scipy.stats import kurtosis, skew
 
 from pytensor_distributions import zi_negativebinomial as ZINegativeBinomial
+from tests.helper_scipy import run_lmoments_test
 
 
 def make_params(*values, dtype="float64"):
@@ -210,3 +211,16 @@ def test_zi_negativebinomial_parameterization_conversion():
     assert_allclose(psi_back, psi, rtol=1e-6)
     assert_allclose(mu_back_val, mu, rtol=1e-6)
     assert_allclose(alpha_back_val, alpha, rtol=1e-6)
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        (0.7, 5.0, 0.4),
+        (0.9, 10.0, 0.3),
+    ],
+)
+def test_zi_negativebinomial_lmoments(params):
+    psi, n, p = params
+    p_params = make_params(psi, n, p, dtype="float64")
+    run_lmoments_test(p_dist=ZINegativeBinomial, p_params=p_params, name="zi_negativebinomial")

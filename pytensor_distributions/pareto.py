@@ -40,6 +40,26 @@ def kurtosis(alpha, m):
     )
 
 
+def lmoment1(alpha, m):
+    return mean(alpha, m)
+
+
+def lmoment2(alpha, m):
+    return pt.switch(pt.gt(alpha, 1), (alpha * m) / ((alpha - 1) * (2 * alpha - 1)), pt.inf)
+
+
+def lmoment3(alpha, m):
+    return pt.switch(pt.gt(alpha, 1), (1 + alpha) / (3 * alpha - 1), pt.inf)
+
+
+def lmoment4(alpha, m):
+    return pt.switch(
+        pt.gt(alpha, 1),
+        (alpha + 1.0) * (2.0 * alpha + 1.0) / ((3.0 * alpha - 1.0) * (4.0 * alpha - 1.0)),
+        pt.inf,
+    )
+
+
 def entropy(alpha, m):
     return pt.log(m / alpha) + (1 + 1 / alpha)
 
