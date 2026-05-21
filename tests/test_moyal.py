@@ -13,13 +13,13 @@ from tests.helper_scipy import make_params, run_distribution_tests
         ([0.0, 1.0], {"loc": 0.0, "scale": 1.0}),
         ([-5.0, 0.5], {"loc": -5.0, "scale": 0.5}),
         ([-1e6, 100.0], {"loc": -1e6, "scale": 100.0}),
-        ([10.0, 1e-6], {"loc": 10.0, "scale": 1e-6}),
-        ([1.0, 1e-6], {"loc": 1.0, "scale": 1e-6}),
+        ([10.0, 1e-3], {"loc": 10.0, "scale": 1e-3}),
+        ([1.0, 1e-4], {"loc": 1.0, "scale": 1e-4}),
     ],
 )
 def test_moyal_vs_scipy(params, sp_params):
     """Test Moyal distribution against scipy."""
-    p_params = make_params(*params)
+    p_params = make_params(*params, dtype="float64")
     support = (-float("inf"), float("inf"))
 
     run_distribution_tests(

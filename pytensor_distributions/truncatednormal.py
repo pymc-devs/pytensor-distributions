@@ -2,6 +2,7 @@ import pytensor.tensor as pt
 
 from pytensor_distributions import normal as Normal
 from pytensor_distributions.helper import logdiffexp, ppf_bounds_cont
+from pytensor_distributions.lmoments import _lmoments
 
 
 def _phi(z):
@@ -135,6 +136,22 @@ def kurtosis(mu, sigma, lower, upper):
     mu4 = m4 - 4 * m1 * m3 + 6 * m1**2 * m2 - 3 * m1**4
 
     return mu4 / mu2**2 - 3
+
+
+def lmoment1(mu, sigma, lower, upper):
+    return mean(mu, sigma, lower, upper)
+
+
+def lmoment2(mu, sigma, lower, upper):
+    return _lmoments(ppf, mu, sigma, lower, upper, r=2)
+
+
+def lmoment3(mu, sigma, lower, upper):
+    return _lmoments(ppf, mu, sigma, lower, upper, r=3)
+
+
+def lmoment4(mu, sigma, lower, upper):
+    return _lmoments(ppf, mu, sigma, lower, upper, r=4)
 
 
 def entropy(mu, sigma, lower, upper):

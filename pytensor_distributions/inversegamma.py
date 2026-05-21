@@ -1,6 +1,7 @@
 import pytensor.tensor as pt
 
 from pytensor_distributions.helper import cdf_bounds, ppf_bounds_cont
+from pytensor_distributions.lmoments import _lmoments
 
 
 def mean(alpha, beta):
@@ -29,6 +30,22 @@ def skewness(alpha, beta):
 
 def kurtosis(alpha, beta):
     return pt.switch(pt.gt(alpha, 4), 6 * (5 * alpha - 11) / ((alpha - 3) * (alpha - 4)), pt.nan)
+
+
+def lmoment1(alpha, beta):
+    return mean(alpha, beta)
+
+
+def lmoment2(alpha, beta):
+    return pt.switch(pt.gt(alpha, 1), _lmoments(ppf, alpha, beta, r=2), pt.inf)
+
+
+def lmoment3(alpha, beta):
+    return pt.switch(pt.gt(alpha, 1), _lmoments(ppf, alpha, beta, r=3), pt.inf)
+
+
+def lmoment4(alpha, beta):
+    return pt.switch(pt.gt(alpha, 1), _lmoments(ppf, alpha, beta, r=4), pt.inf)
 
 
 def entropy(alpha, beta):

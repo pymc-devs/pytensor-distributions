@@ -4,6 +4,7 @@ from pytensor.tensor.special import betaln
 from pytensor.tensor.xlogx import xlogy0
 
 from pytensor_distributions.helper import ppf_bounds_cont
+from pytensor_distributions.lmoments import _lmoments
 
 
 def mean(alpha, beta):
@@ -52,6 +53,22 @@ def kurtosis(alpha, beta):
         / (prod * (psc + 2) * (psc + 3))
     )
     return result
+
+
+def lmoment1(alpha, beta):
+    return mean(alpha, beta)
+
+
+def lmoment2(alpha, beta):
+    return _lmoments(ppf, alpha, beta, r=2)
+
+
+def lmoment3(alpha, beta):
+    return _lmoments(ppf, alpha, beta, r=3)
+
+
+def lmoment4(alpha, beta):
+    return _lmoments(ppf, alpha, beta, r=4)
 
 
 def entropy(alpha, beta):

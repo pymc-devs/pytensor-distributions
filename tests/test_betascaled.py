@@ -4,7 +4,7 @@ import pytest
 from scipy import stats
 
 from pytensor_distributions import betascaled as BetaScaled
-from tests.helper_scipy import make_params, run_distribution_tests
+from tests.helper_scipy import make_params, run_distribution_tests, run_lmoments_test
 
 
 @pytest.mark.parametrize(
@@ -29,3 +29,4 @@ def test_betascaled_vs_scipy(params, sp_params):
         support=support,
         name="betascaled",
     )
+    run_lmoments_test(p_dist=BetaScaled, p_params=p_params, name="betascaled")

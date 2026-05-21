@@ -1,6 +1,7 @@
 import pytensor.tensor as pt
 
 from pytensor_distributions.helper import von_mises_cdf
+from pytensor_distributions.lmoments import _lmoments
 from pytensor_distributions.optimization import find_ppf
 
 
@@ -35,6 +36,23 @@ def skewness(mu, kappa):
 def kurtosis(mu, kappa):
     shape = pt.broadcast_arrays(mu, kappa)[0]
     return pt.full_like(shape, 0.0)
+
+
+def lmoment1(mu, kappa):
+    return mean(mu, kappa)
+
+
+def lmoment2(mu, kappa):
+    return _lmoments(ppf, mu, kappa, r=2)
+
+
+def lmoment3(mu, kappa):
+    shape = pt.broadcast_arrays(mu, kappa)[0]
+    return pt.full_like(shape, 0.0)
+
+
+def lmoment4(mu, kappa):
+    return _lmoments(ppf, mu, kappa, r=4)
 
 
 def entropy(mu, kappa):

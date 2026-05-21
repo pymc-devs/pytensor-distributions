@@ -1,6 +1,7 @@
 import pytensor.tensor as pt
 
 from pytensor_distributions.helper import ppf_bounds_cont
+from pytensor_distributions.lmoments import _lmoments
 
 
 def mean(sigma):
@@ -29,6 +30,23 @@ def skewness(sigma):
 
 def kurtosis(sigma):
     return pt.full_like(sigma, 0.8691773)
+
+
+def lmoment1(sigma):
+    return mean(sigma)
+
+
+def lmoment2(sigma):
+    # sigma * (2 - sqrt(2)) / sqrt(pi)
+    return sigma * 0.3304946062926472
+
+
+def lmoment3(sigma):
+    return _lmoments(ppf, sigma, r=3)
+
+
+def lmoment4(sigma):
+    return _lmoments(ppf, sigma, r=4)
 
 
 def entropy(sigma):

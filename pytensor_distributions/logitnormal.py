@@ -5,6 +5,7 @@ from pytensor_distributions.helper import (
     cdf_bounds,
     ppf_bounds_cont,
 )
+from pytensor_distributions.lmoments import _lmoments
 from pytensor_distributions.normal import ppf as normal_ppf
 
 
@@ -93,6 +94,22 @@ def kurtosis(mu, sigma):
     variance = _ghq_moments(mu, sigma, order=2, mean_val=mean_val)
     fourth_central = _ghq_moments(mu, sigma, order=4, mean_val=mean_val)
     return fourth_central / (variance**2) - 3
+
+
+def lmoment1(mu, sigma):
+    return mean(mu, sigma)
+
+
+def lmoment2(mu, sigma):
+    return _lmoments(ppf, mu, sigma, r=2)
+
+
+def lmoment3(mu, sigma):
+    return _lmoments(ppf, mu, sigma, r=3)
+
+
+def lmoment4(mu, sigma):
+    return _lmoments(ppf, mu, sigma, r=4)
 
 
 def entropy(mu, sigma):

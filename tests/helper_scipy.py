@@ -3,6 +3,7 @@
 import numpy as np
 import pytensor.tensor as pt
 from numpy.testing import assert_allclose
+from scipy.stats import lmoment
 
 
 def run_distribution_tests(
@@ -239,9 +240,88 @@ def run_distribution_tests(
             err_msg=f"Kurtosis test failed with {param_info}",
         )
 
+    # L-moments
+    run_lmoments_test(p_dist=p_dist, p_params=p_params, name=name)
+
 
 def make_params(*values, dtype=None):
     """Create PyTensor constant parameters."""
     if dtype:
         return tuple(pt.constant(v, dtype=dtype) for v in values)
     return tuple(pt.constant(v) for v in values)
+
+
+def run_lmoments_test(p_dist, p_params, name=None, rtol=5e-2, atol=5e-2, sample_size=50_000):
+    """Compare the distribution's lmoment2-4 against sample L-moments."""
+    if name in ["cauchy"]:
+        assert np.isnan(p_dist.lmoment2(*p_params).eval())
+        assert np.isnan(p_dist.lmoment3(*p_params).eval())
+        assert np.isnan(p_dist.lmoment4(*p_params).eval())
+        return
+
+    if name in ["halfcauchy"]:
+        assert p_dist.lmoment2(*p_params).eval() == float("inf")
+        assert p_dist.lmoment3(*p_params).eval() == float("inf")
+        assert p_dist.lmoment4(*p_params).eval() == float("inf")
+        return
+
+    else:
+        rng = pt.random.default_rng(42)
+        data = p_dist.rvs(*p_params, size=sample_size, random_state=rng).eval()
+
+        s_l2, s_tau3, s_tau4 = lmoment(data, order=[2, 3, 4])
+
+        if name in ["halfstudentt"]:
+            param = p_params[0].eval()
+            if param <= 1:
+                s_l2 = s_tau3 = s_tau4 = float("inf")
+            elif param <= 2:
+                s_tau3 = s_tau4 = float("inf")
+            elif param <= 3:
+                s_tau4 = float("inf")
+
+        if name in ["inversegamma", "pareto"]:
+            if p_params[0].eval() <= 1:
+                s_l2 = s_tau3 = s_tau4 = float("inf")
+
+        if name in ["loglogistic"]:
+            if p_params[1].eval() <= 1:
+                s_l2 = s_tau3 = s_tau4 = float("inf")
+
+        if name == "scaledinversechisquared":
+            param = p_params[0].eval()
+            if param <= 4:
+                s_l2 = float("inf")
+                s_tau3 = s_tau4 = float("nan")
+            elif param <= 6:
+                s_tau3 = s_tau4 = float("nan")
+            elif param <= 8:
+                s_tau4 = float("nan")
+
+        if name == "vonmises":
+            s_tau3 = 0.0
+
+        param_vals = [p.eval() if hasattr(p, "eval") else p for p in p_params]
+        param_info = f"\n{name} params: {param_vals}"
+
+        assert_allclose(
+            p_dist.lmoment2(*p_params).eval(),
+            s_l2,
+            rtol=rtol,
+            atol=atol,
+            err_msg=f"L-moment 2 failed{param_info}",
+        )
+        assert_allclose(
+            p_dist.lmoment3(*p_params).eval(),
+            s_tau3,
+            rtol=rtol,
+            atol=atol,
+            err_msg=f"L-skewness (tau3) failed{param_info}",
+        )
+        assert_allclose(
+            p_dist.lmoment4(*p_params).eval(),
+            s_tau4,
+            rtol=rtol,
+            atol=atol,
+            err_msg=f"L-kurtosis (tau4) failed{param_info}",
+        )

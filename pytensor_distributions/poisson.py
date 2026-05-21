@@ -2,6 +2,7 @@ import pytensor.tensor as pt
 from pytensor.tensor.xlogx import xlogy0
 
 from pytensor_distributions.helper import cdf_bounds, discrete_entropy, sf_bounds
+from pytensor_distributions.lmoments import _lmoments
 from pytensor_distributions.optimization import find_ppf_discrete
 
 
@@ -31,6 +32,22 @@ def skewness(mu):
 
 def kurtosis(mu):
     return 1.0 / mu
+
+
+def lmoment1(mu):
+    return mean(mu)
+
+
+def lmoment2(mu):
+    return _lmoments(ppf, mu, r=2)
+
+
+def lmoment3(mu):
+    return _lmoments(ppf, mu, r=3)
+
+
+def lmoment4(mu):
+    return _lmoments(ppf, mu, r=4)
 
 
 def entropy(mu):

@@ -1,6 +1,7 @@
 import pytensor.tensor as pt
 
 from pytensor_distributions.helper import continuous_entropy, logdiffexp
+from pytensor_distributions.lmoments import _lmoments
 from pytensor_distributions.normal import logcdf as normal_logcdf
 from pytensor_distributions.normal import logpdf as normal_logpdf
 from pytensor_distributions.optimization import find_ppf
@@ -41,6 +42,22 @@ def kurtosis(mu, sigma, nu):
     nus2 = pt.square(nu / sigma)
     opnus2 = 1.0 + nus2
     return 6.0 * pt.square(nus2) * pt.pow(opnus2, -2)
+
+
+def lmoment1(mu, sigma, nu):
+    return mean(mu, sigma, nu)
+
+
+def lmoment2(mu, sigma, nu):
+    return _lmoments(ppf, mu, sigma, nu, r=2)
+
+
+def lmoment3(mu, sigma, nu):
+    return _lmoments(ppf, mu, sigma, nu, r=3)
+
+
+def lmoment4(mu, sigma, nu):
+    return _lmoments(ppf, mu, sigma, nu, r=4)
 
 
 def entropy(mu, sigma, nu):

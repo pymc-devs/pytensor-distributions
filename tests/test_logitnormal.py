@@ -4,7 +4,7 @@ import pytest
 
 from pytensor_distributions import logitnormal as LogitNormal
 from tests.helper_empirical import run_empirical_tests
-from tests.helper_scipy import make_params
+from tests.helper_scipy import make_params, run_lmoments_test
 
 
 @pytest.mark.parametrize(
@@ -36,3 +36,4 @@ def test_logitnormal_vs_random(params):
         cdf_rtol=5e-2,
         pdf_cdf_rtol=1e-2,
     )
+    run_lmoments_test(p_dist=LogitNormal, p_params=p_params, name="logitnormal")

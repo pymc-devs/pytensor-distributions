@@ -46,7 +46,7 @@ test_cases = [
         "params": [1.0, 3.5],
         "sp_dist": stats.halfcauchy,
         "sp_params": {"scale": 3.5},
-        "name": "halfstudent_cauchy",
+        "name": "halfstudentt",
         "special_settings": {
             "use_quantiles_for_rvs": True,
         },

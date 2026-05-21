@@ -1,6 +1,7 @@
 import pytensor.tensor as pt
 
 from pytensor_distributions.helper import cdf_bounds, discrete_entropy
+from pytensor_distributions.lmoments import _lmoments
 from pytensor_distributions.optimization import find_ppf_discrete
 
 
@@ -52,6 +53,22 @@ def kurtosis(N, k, n):
     ) * m * (5 * N - 6)
     den = k * n * (N - n) * m * (N - 2) * (N - 3)
     return num / den
+
+
+def lmoment1(N, k, n):
+    return mean(N, k, n)
+
+
+def lmoment2(N, k, n):
+    return _lmoments(ppf, N, k, n, r=2)
+
+
+def lmoment3(N, k, n):
+    return _lmoments(ppf, N, k, n, r=3)
+
+
+def lmoment4(N, k, n):
+    return _lmoments(ppf, N, k, n, r=4)
 
 
 def entropy(N, k, n):
