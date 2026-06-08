@@ -1,7 +1,6 @@
 import pytensor.tensor as pt
 from pytensor.tensor.math import betaincinv
-from pytensor.tensor.special import betaln
-from pytensor.tensor.xlogx import xlogy0
+from pytensor.tensor.special import betaln, xlogy
 
 from pytensor_distributions.helper import ppf_bounds_cont
 from pytensor_distributions.lmoments import _lmoments
@@ -120,8 +119,8 @@ def logpdf(x, alpha, beta):
     return pt.switch(
         pt.bitwise_or(pt.lt(x, 0), pt.gt(x, 1)),
         -pt.inf,
-        (xlogy0((alpha - 1), x) + xlogy0((beta - 1), 1 - x))
-        - (xlogy0((alpha + beta - 1), 1) + betaln(alpha, beta)),
+        (xlogy((alpha - 1), x) + xlogy((beta - 1), 1 - x))
+        - (xlogy((alpha + beta - 1), 1) + betaln(alpha, beta)),
     )
 
 

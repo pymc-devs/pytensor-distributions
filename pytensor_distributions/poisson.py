@@ -1,5 +1,5 @@
 import pytensor.tensor as pt
-from pytensor.tensor.xlogx import xlogy0
+from pytensor.tensor.special import xlogy
 
 from pytensor_distributions.helper import cdf_bounds, discrete_entropy, sf_bounds
 from pytensor_distributions.lmoments import _lmoments
@@ -85,7 +85,7 @@ def rvs(mu, size=None, random_state=None):
 
 
 def logpdf(x, mu):
-    return xlogy0(x, mu) - pt.gammaln(x + 1) - mu
+    return xlogy(x, mu) - pt.gammaln(x + 1) - mu
 
 
 def logcdf(x, mu):
