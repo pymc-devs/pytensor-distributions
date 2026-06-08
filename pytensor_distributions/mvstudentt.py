@@ -70,11 +70,11 @@ def logpdf(x, nu, mu, cov):
 
 def rvs(nu, mu, cov, size=None, random_state=None):
     mu = pt.broadcast_to(mu, cov.shape[:-1])
-    next_rng, z = pt.random.multivariate_normal(
+    z = pt.random.multivariate_normal(
         pt.zeros_like(mu), cov, size=size, rng=random_state, return_next_rng=True
-    )
+    )[1]
     chi2 = pt.random.chisquare(
-        nu, size=size if size is not None else 1, rng=next_rng, return_next_rng=True
+        nu, size=size if size is not None else 1, rng=random_state, return_next_rng=True
     )[1]
     if size is None:
         chi2 = chi2[None]

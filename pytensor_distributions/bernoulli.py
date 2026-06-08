@@ -1,5 +1,5 @@
 import pytensor.tensor as pt
-from pytensor.tensor.xlogx import xlogx
+from pytensor.tensor.special import xlogy
 
 from pytensor_distributions.helper import cdf_bounds, ppf_bounds_disc
 
@@ -51,7 +51,7 @@ def lmoment4(p):
 
 def entropy(p):
     q = 1 - p
-    return -xlogx(p) - xlogx(q)
+    return -xlogy(p, p) - xlogy(q, q)
 
 
 def rvs(p, size=None, random_state=None):
