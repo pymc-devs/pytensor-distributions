@@ -112,7 +112,7 @@ def sf(x, nu, mu, sigma):
 
 
 def rvs(nu, mu, sigma, size=None, random_state=None):
-    return pt.random.t(nu, mu, sigma, rng=random_state, size=size)
+    return pt.random.t(nu, mu, sigma, rng=random_state, size=size, return_next_rng=True)[1]
 
 
 def logcdf(x, nu, mu, sigma):

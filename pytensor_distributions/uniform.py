@@ -82,7 +82,7 @@ def isf(x, lower, upper):
 
 
 def rvs(lower, upper, size=None, random_state=None):
-    return pt.random.uniform(lower, upper, size=size, rng=random_state)
+    return pt.random.uniform(lower, upper, size=size, rng=random_state, return_next_rng=True)[1]
 
 
 def logcdf(x, lower, upper):

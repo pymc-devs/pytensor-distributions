@@ -133,5 +133,5 @@ def isf(q, alpha, beta):
 
 
 def rvs(alpha, beta, size=None, random_state=None):
-    u = pt.random.uniform(size=size, rng=random_state)
+    u = pt.random.uniform(size=size, rng=random_state, return_next_rng=True)[1]
     return alpha * (u / (1 - u)) ** (1 / beta)

@@ -114,4 +114,4 @@ def isf(q, p):
 
 def rvs(p, size=None, random_state=None):
     p = _normalize_p(p)
-    return pt.random.categorical(p, size=size, rng=random_state)
+    return pt.random.categorical(p, size=size, rng=random_state, return_next_rng=True)[1]

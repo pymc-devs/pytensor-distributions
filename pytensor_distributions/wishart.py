@@ -82,12 +82,21 @@ def rvs(nu, V, size=None, random_state=None):
         squeeze = False
 
     chi_samples = pt.stack(
-        [pt.sqrt(pt.random.chisquare(nu - i, size=batch_size, rng=random_state)) for i in range(p)],
+        [
+            pt.sqrt(
+                pt.random.chisquare(
+                    nu - i, size=batch_size, rng=random_state, return_next_rng=True
+                )[1]
+            )
+            for i in range(p)
+        ],
         axis=1,
     )
 
     n_tril = p * (p - 1) // 2
-    norm_samples = pt.random.normal(0, 1, size=(batch_size, n_tril), rng=random_state)
+    norm_samples = pt.random.normal(
+        0, 1, size=(batch_size, n_tril), rng=random_state, return_next_rng=True
+    )[1]
     A = pt.zeros((batch_size, p, p))
 
     diag_idx = pt.arange(p)

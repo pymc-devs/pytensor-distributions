@@ -79,7 +79,7 @@ def sf(x, sigma):
 
 
 def rvs(sigma, size=None, random_state=None):
-    return pt.abs(pt.random.normal(0, sigma, rng=random_state, size=size))
+    return pt.abs(pt.random.normal(0, sigma, rng=random_state, size=size, return_next_rng=True)[1])
 
 
 def logpdf(x, sigma):

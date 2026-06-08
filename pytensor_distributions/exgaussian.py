@@ -88,8 +88,8 @@ def sf(x, mu, sigma, nu):
 
 
 def rvs(mu, sigma, nu, size=None, random_state=None):
-    next_rng, exp_rvs = pt.random.exponential(nu, rng=random_state, size=size).owner.outputs
-    normal_rvs = pt.random.normal(mu, sigma, rng=next_rng, size=size)
+    next_rng, exp_rvs = pt.random.exponential(nu, rng=random_state, size=size, return_next_rng=True)
+    normal_rvs = pt.random.normal(mu, sigma, rng=next_rng, size=size, return_next_rng=True)[1]
     return normal_rvs + exp_rvs
 
 

@@ -55,4 +55,4 @@ def logpdf(x, n, p):
 
 
 def rvs(n, p, size=None, random_state=None):
-    return pt.random.multinomial(n, p, size=size, rng=random_state)
+    return pt.random.multinomial(n, p, size=size, rng=random_state, return_next_rng=True)[1]

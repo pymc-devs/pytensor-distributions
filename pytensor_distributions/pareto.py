@@ -86,7 +86,7 @@ def isf(x, alpha, m):
 
 
 def rvs(alpha, m, size=None, random_state=None):
-    u = pt.random.uniform(size=size, rng=random_state)
+    u = pt.random.uniform(size=size, rng=random_state, return_next_rng=True)[1]
     return m / (1 - u) ** (1 / alpha)
 
 

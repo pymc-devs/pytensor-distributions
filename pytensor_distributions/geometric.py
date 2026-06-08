@@ -78,7 +78,7 @@ def isf(q, p):
 
 
 def rvs(p, size=None, random_state=None):
-    return pt.random.geometric(p, size=size, rng=random_state)
+    return pt.random.geometric(p, size=size, rng=random_state, return_next_rng=True)[1]
 
 
 def logpdf(x, p):

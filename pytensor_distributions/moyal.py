@@ -80,7 +80,7 @@ def isf(x, mu, sigma):
 
 
 def rvs(mu, sigma, size=None, random_state=None):
-    u = pt.random.uniform(size=size, rng=random_state)
+    u = pt.random.uniform(size=size, rng=random_state, return_next_rng=True)[1]
     return ppf(u, mu, sigma)
 
 

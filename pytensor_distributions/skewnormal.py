@@ -16,7 +16,7 @@ def mode(mu, sigma, alpha):
 
     term1 = pt.sqrt(2 / pt.pi) * delta
     term2 = (1 - pt.pi / 4) * (term1**3) / (1 - (2 / pt.pi) * delta**2)
-    term3 = 0.5 * pt.sgn(alpha) * pt.exp(-2 * pt.pi / pt.abs(alpha))
+    term3 = 0.5 * pt.sign(alpha) * pt.exp(-2 * pt.pi / pt.abs(alpha))
 
     mo_alpha = term1 - term2 - term3
     return mu + sigma * mo_alpha
@@ -104,8 +104,8 @@ def sf(x, mu, sigma, alpha):
 
 def rvs(mu, sigma, alpha, size=None, random_state=None):
     mu_b, sigma_b, alpha_b = pt.broadcast_arrays(mu, sigma, alpha)
-    next_rng, u_0 = pt.random.normal(0, 1, rng=random_state, size=size).owner.outputs
-    v = pt.random.normal(0, 1, rng=next_rng, size=size)
+    next_rng, u_0 = pt.random.normal(0, 1, rng=random_state, size=size, return_next_rng=True)
+    next_rng, v = pt.random.normal(0, 1, rng=next_rng, size=size, return_next_rng=True)
     d = alpha_b / pt.sqrt(1 + alpha_b**2)
     u_1 = d * u_0 + v * pt.sqrt(1 - d**2)
     return pt.sign(u_0) * u_1 * sigma_b + mu_b

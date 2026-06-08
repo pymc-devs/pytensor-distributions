@@ -68,7 +68,7 @@ def pdf(x, nu):
 
 
 def rvs(nu, size=None, random_state=None):
-    return pt.random.chisquare(nu, rng=random_state, size=size)
+    return pt.random.chisquare(nu, rng=random_state, size=size, return_next_rng=True)[1]
 
 
 def logcdf(x, nu):

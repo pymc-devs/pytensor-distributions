@@ -81,7 +81,9 @@ def isf(q, lower, upper):
 
 
 def rvs(lower, upper, size=None, random_state=None):
-    return pt.random.integers(lower, upper + 1, size=size, rng=random_state)
+    return pt.random.integers(lower, upper + 1, size=size, rng=random_state, return_next_rng=True)[
+        1
+    ]
 
 
 def logpdf(x, lower, upper):

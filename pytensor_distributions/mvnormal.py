@@ -85,4 +85,6 @@ def logpdf(x, mu, cov):
 
 def rvs(mu, cov, size=None, random_state=None):
     mu = pt.broadcast_to(mu, cov.shape[:-1])
-    return pt.random.multivariate_normal(mu, cov, size=size, rng=random_state)
+    return pt.random.multivariate_normal(
+        mu, cov, size=size, rng=random_state, return_next_rng=True
+    )[1]

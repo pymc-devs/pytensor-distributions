@@ -85,7 +85,7 @@ def sf(x, mu, lam):
 
 
 def rvs(mu, lam, size=None, random_state=None):
-    return pt.random.wald(mu, lam, rng=random_state, size=size)
+    return pt.random.wald(mu, lam, rng=random_state, size=size, return_next_rng=True)[1]
 
 
 def logcdf(x, mu, lam):

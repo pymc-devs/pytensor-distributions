@@ -197,7 +197,9 @@ def rvs(h, z, size=None, random_state=None):
     else:
         gamma_size = (K, *size)
 
-    gamma_draws = pt.random.gamma(h, scale=1.0, size=gamma_size, rng=random_state)
+    gamma_draws = pt.random.gamma(
+        h, scale=1.0, size=gamma_size, rng=random_state, return_next_rng=True
+    )[1]
 
     z2_term = z**2 / (4 * pt.pi**2)
     k_bc = k.reshape((-1,) + (1,) * (gamma_draws.ndim - 1))

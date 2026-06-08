@@ -123,7 +123,7 @@ def sf(x, nu, sigma):
 
 
 def rvs(nu, sigma, size=None, random_state=None):
-    t_samples = pt.random.t(nu, rng=random_state, size=size)
+    t_samples = pt.random.t(nu, rng=random_state, size=size, return_next_rng=True)[1]
     return pt.abs(t_samples * sigma)
 
 

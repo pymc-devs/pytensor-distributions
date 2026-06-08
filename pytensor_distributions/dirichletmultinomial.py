@@ -75,5 +75,5 @@ def logpdf(x, n, a):
 
 
 def rvs(n, a, size=None, random_state=None):
-    p = pt.random.dirichlet(a, size=size, rng=random_state)
-    return pt.random.multinomial(n, p, rng=random_state)
+    next_rng, p = pt.random.dirichlet(a, size=size, rng=random_state, return_next_rng=True)
+    return pt.random.multinomial(n, p, rng=next_rng, return_next_rng=True)[1]
