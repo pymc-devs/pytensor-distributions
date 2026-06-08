@@ -288,16 +288,6 @@ def run_lmoments_test(p_dist, p_params, name=None, rtol=5e-2, atol=5e-2, sample_
             if p_params[1].eval() <= 1:
                 s_l2 = s_tau3 = s_tau4 = float("inf")
 
-        if name == "scaledinversechisquared":
-            param = p_params[0].eval()
-            if param <= 4:
-                s_l2 = float("inf")
-                s_tau3 = s_tau4 = float("nan")
-            elif param <= 6:
-                s_tau3 = s_tau4 = float("nan")
-            elif param <= 8:
-                s_tau4 = float("nan")
-
         if name == "vonmises":
             s_tau3 = 0.0
 
