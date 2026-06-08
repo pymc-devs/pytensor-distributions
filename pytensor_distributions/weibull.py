@@ -1,6 +1,5 @@
 import pytensor.tensor as pt
-from pytensor.tensor.special import gamma
-from pytensor.tensor.xlogx import xlogy0
+from pytensor.tensor.special import gamma, xlogy
 
 from pytensor_distributions.helper import ppf_bounds_cont
 
@@ -106,7 +105,7 @@ def logpdf(x, alpha, beta):
     return pt.switch(
         pt.lt(x, 0),
         -pt.inf,
-        pt.log(alpha / beta) + xlogy0(alpha - 1, x / beta) - (x / beta) ** alpha,
+        pt.log(alpha / beta) + xlogy(alpha - 1, x / beta) - (x / beta) ** alpha,
     )
 
 

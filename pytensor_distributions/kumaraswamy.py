@@ -1,6 +1,5 @@
 import pytensor.tensor as pt
-from pytensor.tensor.special import betaln
-from pytensor.tensor.xlogx import xlogy0
+from pytensor.tensor.special import betaln, xlogy
 
 from pytensor_distributions.helper import cdf_bounds, ppf_bounds_cont, sf_bounds
 
@@ -112,7 +111,7 @@ def logpdf(x, a, b):
     return pt.switch(
         pt.bitwise_or(pt.le(x, 0), pt.ge(x, 1)),
         -pt.inf,
-        pt.log(a * b) + xlogy0(a - 1, x) + xlogy0(b - 1, 1 - x**a),
+        pt.log(a * b) + xlogy(a - 1, x) + xlogy(b - 1, 1 - x**a),
     )
 
 

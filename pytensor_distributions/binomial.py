@@ -1,5 +1,5 @@
 import pytensor.tensor as pt
-from pytensor.tensor.xlogx import xlogy0
+from pytensor.tensor.special import xlogy
 
 from pytensor_distributions.helper import cdf_bounds, discrete_entropy
 from pytensor_distributions.lmoments import _lmoments
@@ -87,7 +87,7 @@ def logpdf(x, n, p):
         pt.gammaln(n + 1)
         - pt.gammaln(x + 1)
         - pt.gammaln(n - x + 1)
-        + xlogy0(x, p)
+        + xlogy(x, p)
         + (n - x) * pt.log1p(-p),
     )
 
