@@ -130,4 +130,6 @@ def isf(q, N, k, n):
 
 
 def rvs(N, k, n, size=None, random_state=None):
-    return pt.random.hypergeometric(k, N - k, n, size=size, rng=random_state)
+    return pt.random.hypergeometric(k, N - k, n, size=size, rng=random_state, return_next_rng=True)[
+        1
+    ]

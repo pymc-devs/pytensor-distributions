@@ -82,7 +82,7 @@ def sf(x, alpha, beta):
 
 
 def rvs(alpha, beta, size=None, random_state=None):
-    return pt.random.cauchy(alpha, beta, rng=random_state, size=size)
+    return pt.random.cauchy(alpha, beta, rng=random_state, size=size, return_next_rng=True)[1]
 
 
 def logcdf(x, alpha, beta):

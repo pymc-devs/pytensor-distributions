@@ -76,7 +76,9 @@ def sf(x, q, beta):
 
 
 def rvs(q, beta, size=None, random_state=None):
-    return ppf(pt.random.uniform(0, 1, rng=random_state, size=size), q, beta)
+    return ppf(
+        pt.random.uniform(0, 1, rng=random_state, size=size, return_next_rng=True)[1], q, beta
+    )
 
 
 def logcdf(x, q, beta):

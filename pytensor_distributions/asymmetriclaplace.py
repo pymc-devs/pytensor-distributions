@@ -111,7 +111,9 @@ def isf(x, mu, b, kappa):
 
 
 def rvs(mu, b, kappa, size=None, random_state=None):
-    random_samples = pt.random.uniform(-kappa, 1 / kappa, size=size, rng=random_state)
+    random_samples = pt.random.uniform(
+        -kappa, 1 / kappa, size=size, rng=random_state, return_next_rng=True
+    )[1]
     sgn = pt.sign(random_samples)
     return mu - (1 / (1 / b * sgn * pt.power(kappa, sgn))) * pt.log(
         1 - random_samples * sgn * pt.power(kappa, sgn)

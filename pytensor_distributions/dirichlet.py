@@ -73,4 +73,4 @@ def logpdf(x, alpha):
 
 
 def rvs(alpha, size=None, random_state=None):
-    return pt.random.dirichlet(alpha, size=size, rng=random_state)
+    return pt.random.dirichlet(alpha, size=size, rng=random_state, return_next_rng=True)[1]

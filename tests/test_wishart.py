@@ -120,9 +120,11 @@ def test_wishart_rvs(nu, V):
 
     n_samples = 1000
     samples = Wishart.rvs(p_nu, p_V, size=n_samples).eval()
-    assert samples.shape == (n_samples, p, p), (
-        f"Multiple samples should have shape ({n_samples}, {p}, {p})"
-    )
+    assert samples.shape == (
+        n_samples,
+        p,
+        p,
+    ), f"Multiple samples should have shape ({n_samples}, {p}, {p})"
 
     for i in range(min(10, n_samples)):
         eigenvalues = np.linalg.eigvalsh(samples[i])

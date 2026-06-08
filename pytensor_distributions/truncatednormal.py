@@ -274,5 +274,5 @@ def isf(q, mu, sigma, lower, upper):
 
 
 def rvs(mu, sigma, lower, upper, size=None, random_state=None):
-    u = pt.random.uniform(0, 1, size=size, rng=random_state)
+    u = pt.random.uniform(0, 1, size=size, rng=random_state, return_next_rng=True)[1]
     return ppf(u, mu, sigma, lower, upper)

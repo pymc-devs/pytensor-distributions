@@ -83,7 +83,7 @@ def sf(x, mu, s):
 
 
 def rvs(mu, s, size=None, random_state=None):
-    return pt.random.logistic(mu, s, rng=random_state, size=size)
+    return pt.random.logistic(mu, s, rng=random_state, size=size, return_next_rng=True)[1]
 
 
 def logcdf(x, mu, s):

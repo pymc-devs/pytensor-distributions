@@ -204,4 +204,6 @@ def isf(q, mu, sigma):
 
 
 def rvs(mu, sigma, size=None, random_state=None):
-    return pt.sigmoid(pt.random.normal(mu, sigma, rng=random_state, size=size))
+    return pt.sigmoid(
+        pt.random.normal(mu, sigma, rng=random_state, size=size, return_next_rng=True)[1]
+    )

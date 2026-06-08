@@ -67,7 +67,6 @@ def test_polyagamma_cdf_bounds(params, samples):
     assert_allclose(PolyaGamma.cdf(extended_vals, *p_params).eval(), expected)
 
 
-@pytest.mark.slow
 @pytest.mark.parametrize("params", [(1.0, 0.0)])
 def test_polyagamma_ppf(params, samples):
     """PPF should match empirical quantiles. Slow due to scan-based solver."""
@@ -79,7 +78,6 @@ def test_polyagamma_ppf(params, samples):
     assert_allclose(theoretical, empirical, rtol=1e-1, atol=5e-3)
 
 
-@pytest.mark.slow
 def test_polyagamma_ppf_cdf_inverse(samples):
     """CDF(PPF(q)) should recover q. Slow due to scan-based solver."""
     p_params, _ = samples[(1.0, 0.0)]

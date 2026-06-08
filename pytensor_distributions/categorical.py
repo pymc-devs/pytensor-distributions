@@ -1,5 +1,5 @@
 import pytensor.tensor as pt
-from pytensor.tensor.xlogx import xlogx
+from pytensor.tensor.special import xlogy
 
 from pytensor_distributions.helper import cdf_bounds, ppf_bounds_disc
 
@@ -54,7 +54,7 @@ def kurtosis(p):
 
 def entropy(p):
     p = _normalize_p(p)
-    return -pt.sum(xlogx(p), axis=-1)
+    return -pt.sum(xlogy(p, p), axis=-1)
 
 
 def pdf(x, p):
@@ -114,4 +114,4 @@ def isf(q, p):
 
 def rvs(p, size=None, random_state=None):
     p = _normalize_p(p)
-    return pt.random.categorical(p, size=size, rng=random_state)
+    return pt.random.categorical(p, size=size, rng=random_state, return_next_rng=True)[1]

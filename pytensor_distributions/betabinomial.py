@@ -126,7 +126,7 @@ def isf(x, n, alpha, beta):
 
 
 def rvs(n, alpha, beta, size=None, random_state=None):
-    return pt.random.betabinom(n, alpha, beta, size=size, rng=random_state)
+    return pt.random.betabinom(n, alpha, beta, size=size, rng=random_state, return_next_rng=True)[1]
 
 
 def logcdf(x, n, alpha, beta):

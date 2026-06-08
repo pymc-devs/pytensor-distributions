@@ -127,8 +127,8 @@ def isf(q, nu, sigma):
 
 
 def rvs(nu, sigma, size=None, random_state=None):
-    next_rng, x = pt.random.normal(nu, sigma, size=size, rng=random_state).owner.outputs
-    y = pt.random.normal(0, sigma, size=size, rng=next_rng)
+    next_rng, x = pt.random.normal(nu, sigma, size=size, rng=random_state, return_next_rng=True)
+    next_rng, y = pt.random.normal(0, sigma, size=size, rng=next_rng, return_next_rng=True)
     return pt.sqrt(x**2 + y**2)
 
 

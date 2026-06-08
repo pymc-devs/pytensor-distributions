@@ -81,7 +81,9 @@ def sf(x, nu, tau2):
 
 
 def rvs(nu, tau2, size=None, random_state=None):
-    return (nu * tau2) / pt.random.chisquare(nu, rng=random_state, size=size)
+    return (nu * tau2) / pt.random.chisquare(nu, rng=random_state, size=size, return_next_rng=True)[
+        1
+    ]
 
 
 def logcdf(x, nu, tau2):

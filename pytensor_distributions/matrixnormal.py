@@ -120,5 +120,5 @@ def rvs(mu, rowcov, colcov, size=None, random_state=None):
     else:
         full_shape = base_shape
 
-    Z = pt.random.normal(0, 1, size=full_shape, rng=random_state)
+    Z = pt.random.normal(0, 1, size=full_shape, rng=random_state, return_next_rng=True)[1]
     return target + L_row @ Z @ pt.swapaxes(L_col, -1, -2)

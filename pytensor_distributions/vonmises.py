@@ -68,7 +68,7 @@ def logpdf(x, mu, kappa):
 
 
 def rvs(mu, kappa, size=None, random_state=None):
-    return pt.random.vonmises(mu, kappa, rng=random_state, size=size)
+    return pt.random.vonmises(mu, kappa, rng=random_state, size=size, return_next_rng=True)[1]
 
 
 def cdf(x, mu, kappa):

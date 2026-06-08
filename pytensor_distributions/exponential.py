@@ -80,7 +80,7 @@ def sf(x, lam):
 
 
 def rvs(lam, size=None, random_state=None):
-    return pt.random.exponential(1.0 / lam, rng=random_state, size=size)
+    return pt.random.exponential(1.0 / lam, rng=random_state, size=size, return_next_rng=True)[1]
 
 
 def logcdf(x, lam):

@@ -106,7 +106,7 @@ def sf(x, alpha, beta, lower, upper):
 
 
 def rvs(alpha, beta, lower, upper, size=None, random_state=None):
-    beta_samples = pt.random.beta(alpha, beta, rng=random_state, size=size)
+    beta_samples = pt.random.beta(alpha, beta, rng=random_state, size=size, return_next_rng=True)[1]
     return beta_samples * (upper - lower) + lower
 
 

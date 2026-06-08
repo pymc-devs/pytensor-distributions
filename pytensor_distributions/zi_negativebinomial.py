@@ -148,9 +148,11 @@ def isf(q, psi, n, p):
 
 
 def rvs(psi, n, p, size=None, random_state=None):
-    base_samples = pt.random.negative_binomial(n, p, size=size, rng=random_state)
-    mask = pt.random.bernoulli(psi, size=size)
-    return pt.cast(mask, "int64") * base_samples
+    next_rng, nbase_samples = pt.random.negative_binomial(
+        n, p, size=size, rng=random_state, return_next_rng=True
+    )
+    next_rng, mask = pt.random.bernoulli(psi, size=size, rng=next_rng, return_next_rng=True)
+    return pt.cast(mask, "int64") * nbase_samples
 
 
 def logcdf(x, psi, n, p):
