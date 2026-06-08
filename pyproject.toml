@@ -5,7 +5,7 @@ build-backend = "flit_core.buildapi"
 [project]
 name = "pytensor-distributions"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 authors = [{ name = "pymc-devs", email = "pymc.devs@gmail.com" }]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -15,13 +15,13 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 dynamic = ["version"]
 description = "PyTensor powered distributions."
-dependencies = ["numpy>=2.0", "pytensor>=2.32.0"]
+dependencies = ["numpy>=2.0", "pytensor>=3.0.0, <4.0.0"]
 
 
 [project.optional-dependencies]
