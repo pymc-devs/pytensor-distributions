@@ -1,6 +1,6 @@
 # PyTensor-distributions
 
-PyTensor powered distributions
+PyTensor-powered distributions
 
 ## Overview
 
@@ -10,12 +10,12 @@ The goal of this package is to work as a unified, well tested and performant sou
 
 The core expressions implemented in PyTensor-distributions are:
 
-- `pdf`: the probability density function of a distribution. (We use pdf for both discrete and continuous distributions)
+- `pdf`: the probability density function of a distribution. (We use `pdf` for both discrete and continuous distributions)
 - `cdf`: the cumulative distribution function of a distribution.
 - `ppf`: the percent point function (inverse of cdf) of a distribution.
 - `sf`: the survival function (1 - cdf) of a distribution.
 - `isf`: the inverse survival function (inverse of sf) of a distribution.
-- `logpdf`: the log-probability of a distribution. (We use pdf for both discrete and continuous distributions)
+- `logpdf`: the log-probability of a distribution. (We use `pdf` for both discrete and continuous distributions)
 - `logcdf`: the log-cumulative distribution function of a distribution.
 - `logsf`: the log-survival function (1 - cdf) of a distribution
 - `mean`: the mean of a distribution.
@@ -25,14 +25,15 @@ The core expressions implemented in PyTensor-distributions are:
 - `std`: the standard deviation of a distribution.
 - `skewness`: the skewness of a distribution.
 - `kurtosis`: the kurtosis of a distribution.
+- `lmoments`: The first lmoment is the mean, so we omit it. For the third and fourth L-moments, we use the ratios.
 - `entropy`: the entropy of a distribution.
 - `rvs`: the random variates of a distribution.
 
 Some distributions may not have all of these expressions implemented.
 
-The package follows a very minimal design, with one file per distribution and some utility files for common functions and tests. The core expressions are implemented as a collection of functions, no classes are used. This is on purpose, to keep the package as simple as possible and let other packages implement more structured APIs on top of these core expressions.
+The package follows a very minimal design, with one file per distribution and some utility files for common functions and tests. The core expressions are implemented as a collection of functions; no classes are used. This is on purpose, to keep the package as simple as possible and let other packages implement more structured APIs on top of these core expressions.
 
-PyTensor-distributions is still in early development, and we are still adding more distributions, tests, and working on improving robustness.
+PyTensor-distributions is still in early development, and we are still adding more distributions and tests and working on improving robustness.
 
 
 ## Contributions
@@ -46,7 +47,7 @@ We follow the PyMC [Code of Conduct](hhttps://github.com/pymc-devs/pymc/blob/mai
 
 ## Donations
 
-PyTensor-distributions, like other PyMC projects, is a non-profit project under the NumFOCUS umbrella. If you want to finnancially support PyTensor-distributions or other PyMC projects financially, you can donate [here](https://numfocus.org/donate-to-pymc).
+PyTensor-distributions, like other PyMC projects, is a non-profit project under the NumFOCUS umbrella. If you want to financially support PyTensor-distributions or other PyMC projects, you can donate [here](https://numfocus.org/donate-to-pymc).
 
 ## Sponsors
 [![NumFOCUS](https://www.numfocus.org/wp-content/uploads/2017/07/NumFocus_LRG.png)](https://numfocus.org)
