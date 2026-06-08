@@ -1,3 +1,20 @@
+<a id="v0.2.0"></a>
+# [v0.2.0](https://github.com/pymc-devs/pytensor-distributions/releases/tag/v0.2.0) - 2026-06-08
+
+## What's Changed
+
+* Add lmoments by [@aloctavodia](https://github.com/aloctavodia) in [#54](https://github.com/pymc-devs/pytensor-distributions/pull/54)
+* Fix deprecation warning: use xlogy by [@aloctavodia](https://github.com/aloctavodia) in [#55](https://github.com/pymc-devs/pytensor-distributions/pull/55)
+* Fix deprecation warnings by [@aloctavodia](https://github.com/aloctavodia) in [#56](https://github.com/pymc-devs/pytensor-distributions/pull/56)
+* Remove scaledinversechisquared by [@aloctavodia](https://github.com/aloctavodia) in [#57](https://github.com/pymc-devs/pytensor-distributions/pull/57)
+
+
+
+**Full Changelog**: https://github.com/pymc-devs/pytensor-distributions/compare/v0.1.3...v0.2.0
+
+[Changes][v0.2.0]
+
+
 <a id="v0.1.3"></a>
 # [v0.1.3](https://github.com/pymc-devs/pytensor-distributions/releases/tag/v0.1.3) - 2026-03-02
 
@@ -83,6 +100,7 @@
 [Changes][v0.1.0]
 
 
+[v0.2.0]: https://github.com/pymc-devs/pytensor-distributions/compare/v0.1.3...v0.2.0
 [v0.1.3]: https://github.com/pymc-devs/pytensor-distributions/compare/v0.1.2...v0.1.3
 [v0.1.2]: https://github.com/pymc-devs/pytensor-distributions/compare/v0.1.1...v0.1.2
 [v0.1.1]: https://github.com/pymc-devs/pytensor-distributions/compare/v0.1.0...v0.1.1
