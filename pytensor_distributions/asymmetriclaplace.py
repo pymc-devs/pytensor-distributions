@@ -1,3 +1,4 @@
+import numpy as np
 import pytensor.tensor as pt
 
 from pytensor_distributions.helper import ppf_bounds_cont
@@ -13,10 +14,16 @@ def mode(mu, b, kappa):
 
 
 def median(mu, b, kappa):
+    # Writing log((1 + kappa**2) / 2) directly lets PyTensor rewrite it through an
+    # imprecise log(2) constant, so the median isn't exact at kappa == 1. Use log1p
+    # with a log(2) cast to the input dtype, which cancels exactly in any dtype.
+    log1p_k2 = pt.log1p(kappa**2)
+    log1p_inv_k2 = pt.log1p(1 / kappa**2)  # 1 / kappa**2 stays <= 1, avoiding overflow
+    log2 = np.asarray(np.log(2.0), dtype=log1p_k2.dtype)
     return pt.switch(
         pt.gt(kappa, 1),
-        mu + kappa * b * pt.log((1 + kappa**2) / (2 * kappa**2)),
-        mu - pt.log((1 + kappa**2) / 2) / (kappa / b),
+        mu + kappa * b * (log1p_inv_k2 - log2),  # log((1 + kappa**2) / (2 * kappa**2))
+        mu - (b / kappa) * (log1p_k2 - log2),  # log((1 + kappa**2) / 2)
     )
 
 
