@@ -1,16 +1,4 @@
-#   Copyright 2020 The PyMC Developers
-#
-#   Licensed under the Apache License, Version 2.0 (the "License");
-#   you may not use this file except in compliance with the License.
-#   You may obtain a copy of the License at
-#
-#       http://www.apache.org/licenses/LICENSE-2.0
-#
-#   Unless required by applicable law or agreed to in writing, software
-#   distributed under the License is distributed on an "AS IS" BASIS,
-#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#   See the License for the specific language governing permissions and
-#   limitations under the License.
+"""Tests for the Extended Generalized Pareto distribution."""
 
 from decimal import Decimal, getcontext
 
@@ -398,10 +386,13 @@ def test_excess_from_logit_upper_tail_is_finite_under_float32():
 
 
 def test_excess_from_logit_resolves_subnormal_kappa_tail():
+    # kappa is passed symbolically rather than baked in: a constant subnormal kappa
+    # makes a graph rewrite fold ``x / kappa`` and overflow at compile time (the value
+    # is still correct, but it emits a spurious RuntimeWarning).
     y = pt.dscalar("y")
-    excess = float(
-        pytensor.function([y], ExtGenPareto._ext_gpd_excess_from_logit(y, 4e-309))(710.0)
-    )
+    kappa = pt.dscalar("kappa")
+    fn = pytensor.function([y, kappa], ExtGenPareto._ext_gpd_excess_from_logit(y, kappa))
+    excess = float(fn(710.0, 4e-309))
     assert excess > 0.0
     np.testing.assert_allclose(excess, 0.395390331, rtol=1e-4)
 
