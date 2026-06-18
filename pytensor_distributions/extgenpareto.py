@@ -90,9 +90,9 @@ def _ext_gpd_excess_from_log_prob(log_q, kappa):
     and its survival ``1 - H``, so ``m = -log(1 - H) = -log1mexp(log_q / kappa)``
     (``pt.log1mexp(a) = log(1 - exp(a))`` for ``a <= 0``). This form stays accurate when ``H``
     rounds to ``1``: for small ``kappa`` the survival ``1 - H`` is tiny, and forming it directly
-    would collapse the excess to ``0`` (and the quantile to ``mu``). Shared
-    by the quantile, the sampler, ``support_point`` and the default transform so
-    all four inverses agree. ``log_q`` must be ``<= 0`` (a log-probability).
+    would collapse the excess to ``0`` (and the quantile to ``mu``). Shared by
+    ``ppf``, ``isf`` and ``rvs`` so the inverses agree. ``log_q`` must be ``<= 0``
+    (a log-probability).
     """
     return -pt.log1mexp(log_q / kappa)
 
@@ -109,6 +109,7 @@ def _ext_gpd_excess_from_logit(value, kappa):
       tail (value >= cutoff, the extreme upper tail where F -> 1): a held in logs as log_a,
         m = -log_a where a < eps, else -log1mexp(-a).
     The unused branch's inputs are clamped (log_F via cutoff, a via log_max) so it stays finite.
+    Backs ``ppf_logit``.
     """
     finfo = np.finfo(value.dtype)
     log_max = float(np.log(finfo.max))  # a = exp(min(log_a, log_max)) stays finite
@@ -155,6 +156,20 @@ def isf(x, mu, sigma, xi, kappa):
     excess = _ext_gpd_excess_from_log_prob(pt.log1p(-x), kappa)
     quantile = _gpd_quantile_from_excess(excess, mu, sigma, xi)
     return ppf_bounds_cont(quantile, x, _gpd_upper_bound(mu, sigma, xi), mu)
+
+
+def ppf_logit(y, mu, sigma, xi, kappa):
+    """Quantile from the logit-CDF coordinate ``y = logit(F(x)) = logcdf - logsf``.
+
+    Equivalent to ``ppf(expit(y))`` but evaluated in log space (see
+    ``_ext_gpd_excess_from_logit``), so it stays accurate when ``F`` saturates to 0 or
+    1 deep in either tail. ``y`` is unconstrained (standard ``Logistic`` under the
+    model), so no bounds are applied. This is the inverse for a logit-CDF
+    (probability-integral) reparametrization, the stable unconstrained transform for
+    sampling the extended GPD as a latent variable.
+    """
+    excess = _ext_gpd_excess_from_logit(y, kappa)
+    return _gpd_quantile_from_excess(excess, mu, sigma, xi)
 
 
 def rvs(mu, sigma, xi, kappa, size=None, random_state=None):

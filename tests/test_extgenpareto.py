@@ -20,6 +20,7 @@ import pytensor.tensor as pt
 import pytest
 import scipy.stats.distributions as sp
 from scipy import integrate, stats
+from scipy.special import expit
 
 from pytensor_distributions import extgenpareto as ExtGenPareto
 from pytensor_distributions import genpareto as GenPareto
@@ -122,6 +123,31 @@ def test_mode_is_the_global_maximum(mu, sigma, xi, kappa):
     grid = np.linspace(mu + 1e-6, upper, 4000)
     grid_max = max(pdf(x, mu, sigma, xi, kappa) for x in grid)
     assert pdf(m, mu, sigma, xi, kappa) >= 0.99 * grid_max
+
+
+@pytest.mark.parametrize(
+    "mu, sigma, xi, kappa", [(0.0, 1.0, 0.2, 1.5), (0.0, 1.0, -0.3, 0.7), (0.0, 1.0, 0.1, 3.0)]
+)
+def test_ppf_logit_matches_ppf_expit_and_round_trips(mu, sigma, xi, kappa):
+    params = [pt.constant(v, dtype="float64") for v in (mu, sigma, xi, kappa)]
+    y = np.array([-6.0, -2.0, 0.0, 2.0, 6.0])
+    np.testing.assert_allclose(
+        ExtGenPareto.ppf_logit(y, *params).eval(),
+        ExtGenPareto.ppf(expit(y), *params).eval(),
+        rtol=1e-8,
+    )
+    # forward (logit-CDF = logcdf - logsf) then ppf_logit recovers x
+    x = mu + sigma * np.array([0.1, 0.7, 2.0])
+    logit_F = (ExtGenPareto.logcdf(x, *params) - ExtGenPareto.logsf(x, *params)).eval()
+    np.testing.assert_allclose(ExtGenPareto.ppf_logit(logit_F, *params).eval(), x, rtol=1e-7)
+
+
+def test_ppf_logit_is_stable_in_the_upper_tail():
+    params = [pt.constant(v) for v in (0.0, 1.0, 0.2, 2.0)]  # unbounded
+    y = np.array([40.0, 80.0, 120.0])  # expit(y) rounds to 1.0, so ppf(expit(y)) would saturate
+    xt = ExtGenPareto.ppf_logit(y, *params).eval()
+    assert np.all(np.isfinite(xt))
+    assert np.all(np.diff(xt) > 0)
 
 
 def ref_ext_logpdf(value, mu, sigma, xi, kappa):

@@ -163,6 +163,19 @@ def isf(x, mu, sigma, xi):
     return ppf_bounds_cont(quantile, x, _gpd_upper_bound(mu, sigma, xi), mu)
 
 
+def ppf_logit(y, mu, sigma, xi):
+    """Quantile from the logit-CDF coordinate ``y = logit(F(x)) = logcdf - logsf``.
+
+    Equivalent to ``ppf(expit(y))`` but evaluated without forming ``expit(y)``, so it
+    stays accurate when ``F`` saturates to 0 or 1 deep in either tail. ``y`` is
+    unconstrained (standard ``Logistic`` under the model), so no bounds are applied.
+    This is the inverse for a logit-CDF (probability-integral) reparametrization, the
+    stable unconstrained transform for sampling the GPD as a latent variable.
+    """
+    # excess m = -log S = -log(1 - expit(y)) = softplus(y).
+    return _gpd_quantile_from_excess(pt.softplus(y), mu, sigma, xi)
+
+
 def rvs(mu, sigma, xi, size=None, random_state=None):
     # Inverse-CDF on a survival draw: excess = -log(v) avoids the 1 - v cancellation.
     v = pt.random.uniform(size=size, rng=random_state, return_next_rng=True)[1]
