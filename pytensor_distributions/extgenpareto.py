@@ -166,12 +166,26 @@ def rvs(mu, sigma, xi, kappa, size=None, random_state=None):
 # Summary statistics. With the substitution x = mu + (sigma/xi)(W ** (-xi) - 1),
 # W ~ Beta(1, kappa), the power moments reduce to Beta functions:
 #   E[W ** (-j xi)] = kappa * B(1 - j xi, kappa),
-# finite (like the plain GPD) only for j xi < 1, so each moment is guarded.
+# finite (like the plain GPD) only for j xi < 1, so each moment is guarded. The
+# exponential-tail limit xi -> 0 is a 0/0 in those Beta forms, so each statistic switches
+# to its closed-form digamma/polygamma limit there; ``_safe_xi`` keeps the discarded
+# branch finite so its gradient is not poisoned.
 
 
 def _pow_moment(j, xi, kappa):
     """``E[W ** (-j xi)] = kappa * B(1 - j xi, kappa)`` for ``W ~ Beta(1, kappa)``."""
     return pt.exp(pt.log(kappa) + betaln(1 - j * xi, kappa))
+
+
+def _safe_xi(xi):
+    """Nonzero stand-in for ``xi`` used only in the discarded ``xi != 0`` moment branch.
+
+    The Beta-function forms divide by ``xi``; at ``xi = 0`` that branch is not selected,
+    but ``pt.switch`` still differentiates it, so a raw ``0/0`` would make the gradient
+    ``nan``. The placeholder ``0.1`` lies in ``(0, 1/4)``, keeping every ``B(1 - j xi,
+    kappa)`` (``j <= 4``) and ``B(n kappa, 1 - xi)`` finite.
+    """
+    return pt.switch(pt.eq(xi, 0.0), 0.1, xi)
 
 
 def _central_moments(sigma, xi, kappa):
@@ -186,7 +200,11 @@ def _central_moments(sigma, xi, kappa):
 
 
 def mean(mu, sigma, xi, kappa):
-    return pt.switch(pt.lt(xi, 1), mu + sigma / xi * (_pow_moment(1, xi, kappa) - 1), np.inf)
+    sx = _safe_xi(xi)
+    general = mu + sigma / sx * (_pow_moment(1, sx, kappa) - 1)
+    limit = mu + sigma * (pt.psi(kappa + 1) + pt.euler_gamma)  # xi -> 0
+    value = pt.switch(pt.eq(xi, 0.0), limit, general)
+    return pt.switch(pt.lt(xi, 1), value, np.inf)
 
 
 def median(mu, sigma, xi, kappa):
@@ -196,15 +214,33 @@ def median(mu, sigma, xi, kappa):
 
 
 def mode(mu, sigma, xi, kappa):
-    # No closed form for kappa != 1; grid-search the log-density. For kappa <= 1 the
-    # density peaks at the lower endpoint mu, for kappa > 1 it is interior.
-    upper = ppf(np.asarray(1.0 - 1e-3), mu, sigma, xi, kappa)
-    return continuous_mode(mu, upper, logpdf, mu, sigma, xi, kappa, n_points=1000)
+    # No closed form for kappa != 1, so the interior case is a grid search:
+    #   xi < -1:                 density diverges at the finite upper endpoint (h blows up);
+    #   xi >= -1 and kappa <= 1: density peaks at the lower endpoint mu (H ** (kappa - 1)
+    #                            blows up for kappa < 1; the kappa = 1 GPD decreases from mu);
+    #   xi >= -1 and kappa > 1:  interior mode.
+    # This matches GenPareto.mode at kappa = 1.
+    upper = _gpd_upper_bound(mu, sigma, xi)
+    interior = continuous_mode(
+        mu,
+        ppf(np.asarray(1.0 - 1e-3), mu, sigma, xi, kappa),
+        logpdf,
+        mu,
+        sigma,
+        xi,
+        kappa,
+        n_points=1000,
+    )
+    at_mu = pt.broadcast_arrays(mu, sigma, xi, kappa)[0]
+    return pt.switch(pt.lt(xi, -1), upper, pt.switch(pt.le(kappa, 1.0), at_mu, interior))
 
 
 def var(mu, sigma, xi, kappa):
-    p1, p2, _, _ = _central_moments(sigma, xi, kappa)
-    return pt.switch(pt.lt(xi, 0.5), p2 - p1**2, np.inf)
+    sx = _safe_xi(xi)
+    p1, p2, _, _ = _central_moments(sigma, sx, kappa)
+    limit = sigma**2 * (pt.polygamma(1, 1.0) - pt.polygamma(1, kappa + 1))  # xi -> 0
+    value = pt.switch(pt.eq(xi, 0.0), limit, p2 - p1**2)
+    return pt.switch(pt.lt(xi, 0.5), value, np.inf)
 
 
 def std(mu, sigma, xi, kappa):
@@ -212,18 +248,25 @@ def std(mu, sigma, xi, kappa):
 
 
 def skewness(mu, sigma, xi, kappa):
-    p1, p2, p3, _ = _central_moments(sigma, xi, kappa)
-    variance = p2 - p1**2
-    central3 = p3 - 3 * p1 * p2 + 2 * p1**3
-    return pt.switch(pt.lt(xi, 1.0 / 3.0), central3 / variance**1.5, np.nan)
+    sx = _safe_xi(xi)
+    p1, p2, p3, _ = _central_moments(sigma, sx, kappa)
+    general = (p3 - 3 * p1 * p2 + 2 * p1**3) / (p2 - p1**2) ** 1.5
+    tg = pt.polygamma(1, 1.0) - pt.polygamma(1, kappa + 1)
+    limit = (pt.polygamma(2, kappa + 1) - pt.polygamma(2, 1.0)) / tg**1.5  # xi -> 0
+    value = pt.switch(pt.eq(xi, 0.0), limit, general)
+    return pt.switch(pt.lt(xi, 1.0 / 3.0), value, np.nan)
 
 
 def kurtosis(mu, sigma, xi, kappa):
     # Excess kurtosis.
-    p1, p2, p3, p4 = _central_moments(sigma, xi, kappa)
+    sx = _safe_xi(xi)
+    p1, p2, p3, p4 = _central_moments(sigma, sx, kappa)
     variance = p2 - p1**2
-    central4 = p4 - 4 * p1 * p3 + 6 * p1**2 * p2 - 3 * p1**4
-    return pt.switch(pt.lt(xi, 0.25), central4 / variance**2 - 3, np.nan)
+    general = (p4 - 4 * p1 * p3 + 6 * p1**2 * p2 - 3 * p1**4) / variance**2 - 3
+    tg = pt.polygamma(1, 1.0) - pt.polygamma(1, kappa + 1)
+    limit = (pt.polygamma(3, 1.0) - pt.polygamma(3, kappa + 1)) / tg**2  # xi -> 0
+    value = pt.switch(pt.eq(xi, 0.0), limit, general)
+    return pt.switch(pt.lt(xi, 0.25), value, np.nan)
 
 
 def entropy(mu, sigma, xi, kappa):
@@ -239,7 +282,8 @@ def entropy(mu, sigma, xi, kappa):
 
 # L-moments. With lambda_{r+1} = (sigma kappa / xi) * sum_k p*_{r,k} B(kappa (k+1), 1 - xi)
 # (p* the shifted Legendre coefficients), these reduce to the GPD L-moments at kappa = 1
-# and are finite for xi < 1.
+# and are finite for xi < 1. Like the ordinary moments they are a 0/0 at xi = 0 and switch
+# to a digamma limit there.
 
 
 def _lbeta(n, xi, kappa):
@@ -252,17 +296,34 @@ def lmoment1(mu, sigma, xi, kappa):
 
 
 def lmoment2(mu, sigma, xi, kappa):
-    l1, l2 = _lbeta(1, xi, kappa), _lbeta(2, xi, kappa)
-    return pt.switch(pt.lt(xi, 1), sigma * kappa / xi * (2 * l2 - l1), np.inf)
+    sx = _safe_xi(xi)
+    l1, l2 = _lbeta(1, sx, kappa), _lbeta(2, sx, kappa)
+    general = sigma * kappa / sx * (2 * l2 - l1)
+    limit = sigma * (pt.psi(2 * kappa + 1) - pt.psi(kappa + 1))  # xi -> 0
+    value = pt.switch(pt.eq(xi, 0.0), limit, general)
+    return pt.switch(pt.lt(xi, 1), value, np.inf)
 
 
 def lmoment3(mu, sigma, xi, kappa):
-    l1, l2, l3 = (_lbeta(n, xi, kappa) for n in (1, 2, 3))
-    tau3 = (6 * l3 - 6 * l2 + l1) / (2 * l2 - l1)
-    return pt.switch(pt.lt(xi, 1), tau3, np.inf)
+    sx = _safe_xi(xi)
+    l1, l2, l3 = (_lbeta(n, sx, kappa) for n in (1, 2, 3))
+    general = (6 * l3 - 6 * l2 + l1) / (2 * l2 - l1)
+    denom = pt.psi(2 * kappa + 1) - pt.psi(kappa + 1)
+    limit = (2 * pt.psi(3 * kappa + 1) - 3 * pt.psi(2 * kappa + 1) + pt.psi(kappa + 1)) / denom
+    value = pt.switch(pt.eq(xi, 0.0), limit, general)
+    return pt.switch(pt.lt(xi, 1), value, np.inf)
 
 
 def lmoment4(mu, sigma, xi, kappa):
-    l1, l2, l3, l4 = (_lbeta(n, xi, kappa) for n in (1, 2, 3, 4))
-    tau4 = (20 * l4 - 30 * l3 + 12 * l2 - l1) / (2 * l2 - l1)
-    return pt.switch(pt.lt(xi, 1), tau4, np.inf)
+    sx = _safe_xi(xi)
+    l1, l2, l3, l4 = (_lbeta(n, sx, kappa) for n in (1, 2, 3, 4))
+    general = (20 * l4 - 30 * l3 + 12 * l2 - l1) / (2 * l2 - l1)
+    denom = pt.psi(2 * kappa + 1) - pt.psi(kappa + 1)
+    limit = (
+        5 * pt.psi(4 * kappa + 1)
+        - 10 * pt.psi(3 * kappa + 1)
+        + 6 * pt.psi(2 * kappa + 1)
+        - pt.psi(kappa + 1)
+    ) / denom
+    value = pt.switch(pt.eq(xi, 0.0), limit, general)
+    return pt.switch(pt.lt(xi, 1), value, np.inf)

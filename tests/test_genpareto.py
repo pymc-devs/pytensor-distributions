@@ -34,6 +34,30 @@ def test_ppf_logit_is_stable_in_the_upper_tail():
     assert np.all(np.diff(xt) > 0)
 
 
+@pytest.mark.parametrize("xi, expected", [(-2.0, np.inf), (-1.0, 0.0), (-0.5, -np.inf)])
+def test_logpdf_at_finite_upper_endpoint(xi, expected):
+    """Density at the finite upper endpoint matches scipy.
+
+    It diverges for xi < -1, equals 1/sigma (logpdf 0 with sigma = 1) at xi = -1, and is
+    0 (logpdf -inf) for -1 < xi < 0.
+    """
+    mu, sigma = 0.0, 1.0
+    x_F = mu - sigma / xi
+    val = GenPareto.logpdf(np.array(x_F), *make_params(mu, sigma, xi)).eval()
+    assert val == expected
+    if xi < -1:  # the mode is that diverging endpoint
+        assert np.isclose(GenPareto.mode(*make_params(mu, sigma, xi)).eval(), x_F)
+
+
+def test_invalid_sigma_gives_nonfinite_logpdf():
+    """A non-positive sigma yields a non-finite logpdf, never a plausible density.
+
+    Parameter validation is the consuming wrapper's job (e.g. pymc's check_parameters).
+    """
+    val = GenPareto.logpdf(np.array(0.5), *make_params(0.0, -1.0, 0.2)).eval()
+    assert not np.isfinite(val)
+
+
 @pytest.mark.parametrize(
     "params, sp_params",
     [
@@ -42,6 +66,7 @@ def test_ppf_logit_is_stable_in_the_upper_tail():
         ([1.0, 2.0, 0.0], {"c": 0.0, "loc": 1.0, "scale": 2.0}),
         ([2.0, 0.5, -0.3], {"c": -0.3, "loc": 2.0, "scale": 0.5}),
         ([0.0, 2.0, -0.1], {"c": -0.1, "loc": 0.0, "scale": 2.0}),
+        ([0.0, 1.0, -2.0], {"c": -2.0, "loc": 0.0, "scale": 1.0}),  # xi < -1: bounded, mode at xF
     ],
 )
 def test_genpareto_vs_scipy(params, sp_params):

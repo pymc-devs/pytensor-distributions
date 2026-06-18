@@ -94,6 +94,12 @@ def logpdf(x, mu, sigma, xi):
     # in-support branch would evaluate log1p(inf)/inf -> nan there, so pin
     # z = +inf to -inf explicitly.
     logp = pt.switch(pt.eq(z, np.inf), -np.inf, logp)
+    # At the finite upper endpoint (xi < 0, 1 + xi z = 0) the density diverges for
+    # xi < -1, equals 1/sigma at xi = -1, and is 0 for -1 < xi < 0 (matches scipy's
+    # genpareto, and keeps pdf(mode) consistent where mode is that endpoint).
+    at_endpoint = pt.and_(pt.lt(xi, 0), pt.eq(1 + xi * z, 0))
+    endpoint = pt.switch(pt.lt(xi, -1), np.inf, pt.switch(pt.eq(xi, -1), -pt.log(sigma), -np.inf))
+    logp = pt.switch(at_endpoint, endpoint, logp)
     return logp
 
 

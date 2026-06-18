@@ -30,6 +30,8 @@ _MOMENT_CASES = [
     (0.0, 1.0, 0.2, 0.5),
     (1.0, 2.0, -0.2, 3.0),
     (0.0, 1.0, -0.3, 0.7),
+    (0.0, 1.0, 0.0, 2.0),  # xi = 0: exponential-tail limit
+    (1.0, 2.0, 0.0, 0.5),
 ]
 
 
@@ -71,7 +73,9 @@ def test_moments_match_numerical_integration(mu, sigma, xi, kappa):
     assert np.isclose(_stat(ExtGenPareto.median, mu, sigma, xi, kappa), ppf_half, rtol=1e-6)
 
 
-@pytest.mark.parametrize("mu, sigma, xi", [(0.0, 1.0, 0.1), (2.0, 0.5, -0.3), (0.0, 2.0, 0.2)])
+@pytest.mark.parametrize(
+    "mu, sigma, xi", [(0.0, 1.0, 0.1), (2.0, 0.5, -0.3), (0.0, 2.0, 0.2), (0.0, 1.0, 0.0)]
+)
 def test_lmoments_reduce_to_gpd_at_kappa_one(mu, sigma, xi):
     """At kappa = 1 the ExtGPD L-moments collapse onto the plain GPD's."""
     for ext, gpd in [
@@ -82,7 +86,9 @@ def test_lmoments_reduce_to_gpd_at_kappa_one(mu, sigma, xi):
         assert np.isclose(_stat(ext, mu, sigma, xi, 1.0), _stat(gpd, mu, sigma, xi), rtol=1e-10)
 
 
-@pytest.mark.parametrize("mu, sigma, xi, kappa", [(0.0, 1.0, 0.1, 2.0), (0.0, 1.0, -0.3, 0.7)])
+@pytest.mark.parametrize(
+    "mu, sigma, xi, kappa", [(0.0, 1.0, 0.1, 2.0), (0.0, 1.0, -0.3, 0.7), (0.0, 1.0, 0.0, 2.0)]
+)
 def test_lmoments_match_sample(mu, sigma, xi, kappa):
     """Closed-form L-moments against sample L-moments (scipy.stats.lmoment)."""
     rng = pt.random.default_rng(42)
@@ -111,6 +117,32 @@ def test_mode_is_the_global_maximum(mu, sigma, xi, kappa):
     grid = np.linspace(mu + 1e-6, upper, 4000)
     grid_max = max(pdf(x, mu, sigma, xi, kappa) for x in grid)
     assert pdf(m, mu, sigma, xi, kappa) >= 0.99 * grid_max
+
+
+@pytest.mark.parametrize("xi", [-2.0, -1.5, -1.0, -0.5, 0.0, 0.3])
+def test_mode_matches_genpareto_at_kappa_one(xi):
+    """At kappa = 1 the ExtGPD mode collapses onto the GPD mode.
+
+    This includes xi < -1 (the diverging finite endpoint), which a plain interior grid
+    search would miss.
+    """
+    ext = _stat(ExtGenPareto.mode, 0.0, 1.0, xi, 1.0)
+    gpd = _stat(GenPareto.mode, 0.0, 1.0, xi)
+    assert np.isclose(ext, gpd, rtol=1e-9, atol=1e-9)
+
+
+@pytest.mark.parametrize("bad", ["sigma", "kappa"])
+def test_invalid_params_give_nonfinite_logpdf(bad):
+    """Invalid sigma/kappa give a non-finite logpdf, never a plausible density.
+
+    Parameter validation is the consuming wrapper's job (e.g. pymc's check_parameters).
+    """
+    mu, sigma, xi, kappa = 0.0, 1.0, 0.2, 1.5
+    if bad == "sigma":
+        sigma = -1.0
+    else:
+        kappa = -0.5
+    assert not np.isfinite(_stat(ExtGenPareto.logpdf, 0.5, mu, sigma, xi, kappa))
 
 
 @pytest.mark.parametrize(
