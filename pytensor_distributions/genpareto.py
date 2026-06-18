@@ -167,3 +167,67 @@ def rvs(mu, sigma, xi, size=None, random_state=None):
     # Inverse-CDF on a survival draw: excess = -log(v) avoids the 1 - v cancellation.
     v = pt.random.uniform(size=size, rng=random_state, return_next_rng=True)[1]
     return _gpd_quantile_from_excess(-pt.log(v), mu, sigma, xi)
+
+
+# Summary statistics. The r-th moment is finite only for xi < 1 / r, so each is
+# guarded and returns inf / nan past its threshold (matching scipy's genpareto).
+
+
+def mean(mu, sigma, xi):
+    return pt.switch(pt.lt(xi, 1), mu + sigma / (1 - xi), np.inf)
+
+
+def median(mu, sigma, xi):
+    # Quantile at p = 1/2: excess m = -log(1 - 1/2) = log 2.
+    return _gpd_quantile_from_excess(np.log(2.0), mu, sigma, xi)
+
+
+def mode(mu, sigma, xi):
+    # Density is monotone decreasing for xi >= -1 (mode at the lower endpoint mu);
+    # for xi < -1 it diverges at the finite upper endpoint.
+    mu_b, _, xi_b = pt.broadcast_arrays(mu, sigma, xi)
+    return pt.switch(pt.ge(xi_b, -1), mu_b, _gpd_upper_bound(mu, sigma, xi))
+
+
+def var(mu, sigma, xi):
+    return pt.switch(pt.lt(xi, 0.5), sigma**2 / ((1 - xi) ** 2 * (1 - 2 * xi)), np.inf)
+
+
+def std(mu, sigma, xi):
+    return pt.sqrt(var(mu, sigma, xi))
+
+
+def skewness(mu, sigma, xi):
+    value = 2 * (1 + xi) * pt.sqrt(1 - 2 * xi) / (1 - 3 * xi)
+    return pt.switch(pt.lt(xi, 1.0 / 3.0), value, np.nan)
+
+
+def kurtosis(mu, sigma, xi):
+    # Excess kurtosis.
+    value = 3 * (1 - 2 * xi) * (2 * xi**2 + xi + 3) / ((1 - 3 * xi) * (1 - 4 * xi)) - 3
+    return pt.switch(pt.lt(xi, 0.25), value, np.nan)
+
+
+def entropy(mu, sigma, xi):
+    return pt.log(sigma) + xi + 1
+
+
+# L-moments. With Hosking's shape k = -xi, the GPD has lambda_1 = mean,
+# lambda_2 = sigma / ((1 - xi)(2 - xi)), tau_3 = (1 + xi)/(3 - xi),
+# tau_4 = (1 + xi)(2 + xi)/((3 - xi)(4 - xi)); all finite for xi < 1.
+
+
+def lmoment1(mu, sigma, xi):
+    return mean(mu, sigma, xi)
+
+
+def lmoment2(mu, sigma, xi):
+    return pt.switch(pt.lt(xi, 1), sigma / ((1 - xi) * (2 - xi)), np.inf)
+
+
+def lmoment3(mu, sigma, xi):
+    return pt.switch(pt.lt(xi, 1), (1 + xi) / (3 - xi), np.inf)
+
+
+def lmoment4(mu, sigma, xi):
+    return pt.switch(pt.lt(xi, 1), (1 + xi) * (2 + xi) / ((3 - xi) * (4 - xi)), np.inf)

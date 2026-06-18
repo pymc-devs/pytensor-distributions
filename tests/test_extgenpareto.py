@@ -19,10 +19,109 @@ import pytensor
 import pytensor.tensor as pt
 import pytest
 import scipy.stats.distributions as sp
-from scipy import stats
+from scipy import integrate, stats
 
 from pytensor_distributions import extgenpareto as ExtGenPareto
 from pytensor_distributions import genpareto as GenPareto
+
+
+def _compile_scalar(fn, n):
+    """Compile ``fn(x, *params)`` for scalar inputs (used by the quad moment checks)."""
+    x = pt.dscalar("x")
+    ps = [pt.dscalar(f"p{i}") for i in range(n)]
+    return pytensor.function([x, *ps], fn(x, *ps), on_unused_input="ignore")
+
+
+def _stat(fn, *params):
+    return float(fn(*[pt.constant(v, dtype="float64") for v in params]).eval())
+
+
+_MOMENT_CASES = [
+    (0.0, 1.0, 0.1, 2.0),
+    (0.0, 1.0, 0.2, 0.5),
+    (1.0, 2.0, -0.2, 3.0),
+    (0.0, 1.0, -0.3, 0.7),
+]
+
+
+@pytest.mark.parametrize("mu, sigma, xi, kappa", _MOMENT_CASES)
+def test_moments_match_numerical_integration(mu, sigma, xi, kappa):
+    """mean/var/std/skewness/kurtosis/entropy/median against quadrature of the pdf."""
+    pdf = _compile_scalar(ExtGenPareto.pdf, 4)
+    logpdf = _compile_scalar(ExtGenPareto.logpdf, 4)
+    upper = mu - sigma / xi if xi < 0 else np.inf
+    raw = [
+        integrate.quad(
+            lambda x, r=r: (x - mu) ** r * pdf(x, mu, sigma, xi, kappa), mu, upper, limit=200
+        )[0]
+        for r in range(1, 5)
+    ]
+    m1, m2, m3, m4 = raw
+    var_q = m2 - m1**2
+    central3 = m3 - 3 * m1 * m2 + 2 * m1**3
+    central4 = m4 - 4 * m1 * m3 + 6 * m1**2 * m2 - 3 * m1**4
+    entropy_q = integrate.quad(
+        lambda x: -pdf(x, mu, sigma, xi, kappa) * logpdf(x, mu, sigma, xi, kappa),
+        mu,
+        upper,
+        limit=200,
+    )[0]
+    assert np.isclose(_stat(ExtGenPareto.mean, mu, sigma, xi, kappa), mu + m1, rtol=1e-5)
+    assert np.isclose(_stat(ExtGenPareto.var, mu, sigma, xi, kappa), var_q, rtol=1e-5)
+    assert np.isclose(_stat(ExtGenPareto.std, mu, sigma, xi, kappa), np.sqrt(var_q), rtol=1e-5)
+    assert np.isclose(
+        _stat(ExtGenPareto.skewness, mu, sigma, xi, kappa), central3 / var_q**1.5, rtol=1e-4
+    )
+    assert np.isclose(
+        _stat(ExtGenPareto.kurtosis, mu, sigma, xi, kappa), central4 / var_q**2 - 3, rtol=1e-4
+    )
+    assert np.isclose(_stat(ExtGenPareto.entropy, mu, sigma, xi, kappa), entropy_q, rtol=1e-5)
+    ppf_half = float(
+        ExtGenPareto.ppf(pt.constant(0.5), *[pt.constant(v) for v in (mu, sigma, xi, kappa)]).eval()
+    )
+    assert np.isclose(_stat(ExtGenPareto.median, mu, sigma, xi, kappa), ppf_half, rtol=1e-6)
+
+
+@pytest.mark.parametrize("mu, sigma, xi", [(0.0, 1.0, 0.1), (2.0, 0.5, -0.3), (0.0, 2.0, 0.2)])
+def test_lmoments_reduce_to_gpd_at_kappa_one(mu, sigma, xi):
+    """At kappa = 1 the ExtGPD L-moments collapse onto the plain GPD's."""
+    for ext, gpd in [
+        (ExtGenPareto.lmoment2, GenPareto.lmoment2),
+        (ExtGenPareto.lmoment3, GenPareto.lmoment3),
+        (ExtGenPareto.lmoment4, GenPareto.lmoment4),
+    ]:
+        assert np.isclose(_stat(ext, mu, sigma, xi, 1.0), _stat(gpd, mu, sigma, xi), rtol=1e-10)
+
+
+@pytest.mark.parametrize("mu, sigma, xi, kappa", [(0.0, 1.0, 0.1, 2.0), (0.0, 1.0, -0.3, 0.7)])
+def test_lmoments_match_sample(mu, sigma, xi, kappa):
+    """Closed-form L-moments against sample L-moments (scipy.stats.lmoment)."""
+    rng = pt.random.default_rng(42)
+    params = [pt.constant(v) for v in (mu, sigma, xi, kappa)]
+    data = ExtGenPareto.rvs(*params, size=80_000, random_state=rng).eval()
+    s_l2, s_tau3, s_tau4 = stats.lmoment(data, order=[2, 3, 4])
+    assert np.isclose(
+        _stat(ExtGenPareto.lmoment2, mu, sigma, xi, kappa), s_l2, rtol=5e-2, atol=5e-2
+    )
+    assert np.isclose(
+        _stat(ExtGenPareto.lmoment3, mu, sigma, xi, kappa), s_tau3, rtol=5e-2, atol=5e-2
+    )
+    assert np.isclose(
+        _stat(ExtGenPareto.lmoment4, mu, sigma, xi, kappa), s_tau4, rtol=5e-2, atol=5e-2
+    )
+
+
+@pytest.mark.parametrize(
+    "mu, sigma, xi, kappa", [(0.0, 1.0, 0.1, 3.0), (0.0, 1.0, -0.2, 2.5), (0.0, 1.0, 0.1, 0.6)]
+)
+def test_mode_is_the_global_maximum(mu, sigma, xi, kappa):
+    """The grid mode carries (within 1%) the largest density over a fine grid."""
+    pdf = _compile_scalar(ExtGenPareto.pdf, 4)
+    m = _stat(ExtGenPareto.mode, mu, sigma, xi, kappa)
+    upper = _stat(ExtGenPareto.ppf, 0.999, mu, sigma, xi, kappa)
+    grid = np.linspace(mu + 1e-6, upper, 4000)
+    grid_max = max(pdf(x, mu, sigma, xi, kappa) for x in grid)
+    assert pdf(m, mu, sigma, xi, kappa) >= 0.99 * grid_max
 
 
 def ref_ext_logpdf(value, mu, sigma, xi, kappa):

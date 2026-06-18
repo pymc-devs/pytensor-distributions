@@ -16,6 +16,7 @@
 
 import numpy as np
 import pytensor.tensor as pt
+from pytensor.tensor.special import betaln
 
 from pytensor_distributions.genpareto import (
     _gpd_log_H,
@@ -26,7 +27,7 @@ from pytensor_distributions.genpareto import (
     _in_gpd_support,
     _log1p_div,
 )
-from pytensor_distributions.helper import ppf_bounds_cont
+from pytensor_distributions.helper import continuous_mode, ppf_bounds_cont
 
 # Extended Generalized Pareto core. Naveau et al. (2016) extended GPD with
 # carrier G(v) = v ** kappa: the CDF is F = H ** kappa with H the GPD CDF, so
@@ -161,3 +162,108 @@ def rvs(mu, sigma, xi, kappa, size=None, random_state=None):
     u = pt.random.uniform(size=size, rng=random_state, return_next_rng=True)[1]
     excess = _ext_gpd_excess_from_log_prob(pt.log(u), kappa)
     return _gpd_quantile_from_excess(excess, mu, sigma, xi)
+
+
+# Summary statistics. With the substitution x = mu + (sigma/xi)(W ** (-xi) - 1),
+# W ~ Beta(1, kappa), the power moments reduce to Beta functions:
+#   E[W ** (-j xi)] = kappa * B(1 - j xi, kappa),
+# finite (like the plain GPD) only for j xi < 1, so each moment is guarded.
+
+
+def _pow_moment(j, xi, kappa):
+    """``E[W ** (-j xi)] = kappa * B(1 - j xi, kappa)`` for ``W ~ Beta(1, kappa)``."""
+    return pt.exp(pt.log(kappa) + betaln(1 - j * xi, kappa))
+
+
+def _central_moments(sigma, xi, kappa):
+    """Central moments ``E[(X - mu) ** r]`` for r = 1..4 (about mu, not the mean)."""
+    c = sigma / xi
+    m1, m2, m3, m4 = (_pow_moment(j, xi, kappa) for j in (1, 2, 3, 4))
+    p1 = c * (m1 - 1)
+    p2 = c**2 * (m2 - 2 * m1 + 1)
+    p3 = c**3 * (m3 - 3 * m2 + 3 * m1 - 1)
+    p4 = c**4 * (m4 - 4 * m3 + 6 * m2 - 4 * m1 + 1)
+    return p1, p2, p3, p4
+
+
+def mean(mu, sigma, xi, kappa):
+    return pt.switch(pt.lt(xi, 1), mu + sigma / xi * (_pow_moment(1, xi, kappa) - 1), np.inf)
+
+
+def median(mu, sigma, xi, kappa):
+    # F = 1/2  ->  H = (1/2) ** (1/kappa); excess m = -log(1 - H).
+    excess = _ext_gpd_excess_from_log_prob(np.log(0.5), kappa)
+    return _gpd_quantile_from_excess(excess, mu, sigma, xi)
+
+
+def mode(mu, sigma, xi, kappa):
+    # No closed form for kappa != 1; grid-search the log-density. For kappa <= 1 the
+    # density peaks at the lower endpoint mu, for kappa > 1 it is interior.
+    upper = ppf(np.asarray(1.0 - 1e-3), mu, sigma, xi, kappa)
+    return continuous_mode(mu, upper, logpdf, mu, sigma, xi, kappa, n_points=1000)
+
+
+def var(mu, sigma, xi, kappa):
+    p1, p2, _, _ = _central_moments(sigma, xi, kappa)
+    return pt.switch(pt.lt(xi, 0.5), p2 - p1**2, np.inf)
+
+
+def std(mu, sigma, xi, kappa):
+    return pt.sqrt(var(mu, sigma, xi, kappa))
+
+
+def skewness(mu, sigma, xi, kappa):
+    p1, p2, p3, _ = _central_moments(sigma, xi, kappa)
+    variance = p2 - p1**2
+    central3 = p3 - 3 * p1 * p2 + 2 * p1**3
+    return pt.switch(pt.lt(xi, 1.0 / 3.0), central3 / variance**1.5, np.nan)
+
+
+def kurtosis(mu, sigma, xi, kappa):
+    # Excess kurtosis.
+    p1, p2, p3, p4 = _central_moments(sigma, xi, kappa)
+    variance = p2 - p1**2
+    central4 = p4 - 4 * p1 * p3 + 6 * p1**2 * p2 - 3 * p1**4
+    return pt.switch(pt.lt(xi, 0.25), central4 / variance**2 - 3, np.nan)
+
+
+def entropy(mu, sigma, xi, kappa):
+    # -E[log g(X)] in closed form; reduces to the GPD's log(sigma) + xi + 1 at kappa = 1.
+    return (
+        pt.log(sigma)
+        - pt.log(kappa)
+        + 1
+        - 1 / kappa
+        + (1 + xi) * (pt.psi(kappa + 1) + np.euler_gamma)
+    )
+
+
+# L-moments. With lambda_{r+1} = (sigma kappa / xi) * sum_k p*_{r,k} B(kappa (k+1), 1 - xi)
+# (p* the shifted Legendre coefficients), these reduce to the GPD L-moments at kappa = 1
+# and are finite for xi < 1.
+
+
+def _lbeta(n, xi, kappa):
+    """``B(n kappa, 1 - xi)``."""
+    return pt.exp(betaln(n * kappa, 1 - xi))
+
+
+def lmoment1(mu, sigma, xi, kappa):
+    return mean(mu, sigma, xi, kappa)
+
+
+def lmoment2(mu, sigma, xi, kappa):
+    l1, l2 = _lbeta(1, xi, kappa), _lbeta(2, xi, kappa)
+    return pt.switch(pt.lt(xi, 1), sigma * kappa / xi * (2 * l2 - l1), np.inf)
+
+
+def lmoment3(mu, sigma, xi, kappa):
+    l1, l2, l3 = (_lbeta(n, xi, kappa) for n in (1, 2, 3))
+    tau3 = (6 * l3 - 6 * l2 + l1) / (2 * l2 - l1)
+    return pt.switch(pt.lt(xi, 1), tau3, np.inf)
+
+
+def lmoment4(mu, sigma, xi, kappa):
+    l1, l2, l3, l4 = (_lbeta(n, xi, kappa) for n in (1, 2, 3, 4))
+    tau4 = (20 * l4 - 30 * l3 + 12 * l2 - l1) / (2 * l2 - l1)
+    return pt.switch(pt.lt(xi, 1), tau4, np.inf)
