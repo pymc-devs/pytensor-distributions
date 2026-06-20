@@ -5,6 +5,7 @@ import pytensor.tensor as pt
 from pytensor.tensor.special import betaln
 
 from pytensor_distributions.genpareto import (
+    _const_like,
     _gpd_log_H,
     _gpd_log_h,
     _gpd_log_S,
@@ -189,11 +190,17 @@ def _safe_xi(xi):
     ``nan``. The placeholder ``0.1`` lies in ``(0, 1/4)``, keeping every ``B(1 - j xi,
     kappa)`` (``j <= 4``) and ``B(n kappa, 1 - xi)`` finite.
     """
-    return pt.switch(pt.eq(xi, 0.0), 0.1, xi)
+    return pt.switch(pt.eq(xi, 0.0), _const_like(0.1, xi), xi)
 
 
 _MOMENT_SERIES_TERMS = 8  # Taylor order m = 0..8 in xi.
-_MOMENT_SERIES_CUTOFF = 1.8e-2  # |xi| below which the series beats the cancelling exact form.
+# |xi| below which the series beats the cancelling exact Beta form: where the series
+# truncation error (~ |xi| ** (TERMS + 1)) reaches float64 eps, i.e. eps ** (1 / (TERMS + 1)).
+# Float64-tuned on purpose -- the series' own joint central moments only reach float64
+# accuracy, so a float32 caller gains nothing from widening it (and the exact form is the
+# accurate branch for moderate |xi| there).
+_MOMENT_SERIES_CUTOFF = 1.8e-2
+
 
 # polygamma(d, 1) = (-1) ** (d + 1) * d! * zeta(d + 1), for d = 0..11. Baked as literals
 # because pytensor#2244 makes ``pt.polygamma(d, 1.0)`` (a constant argument) ~1e-9 inaccurate;
@@ -225,7 +232,7 @@ def _neglogw_raw_moments(kappa):
     for k in range(1, n_max + 1):
         d = k - 1
         poly_kappa = pt.psi(kappa + 1) if d == 0 else pt.polygamma(d, kappa + 1)
-        cumulants.append((-1.0) ** d * (poly_kappa - _POLYGAMMA_AT_ONE[d]))
+        cumulants.append((-1.0) ** d * (poly_kappa - _const_like(_POLYGAMMA_AT_ONE[d], kappa)))
     raw = [pt.ones_like(kappa)]
     for n in range(1, n_max + 1):
         raw.append(sum(comb(n - 1, i) * cumulants[n - 1 - i] * raw[i] for i in range(n)))
@@ -275,7 +282,10 @@ def _central_moment_series(r, xi, raw):
             denom = 1
             for n in orders:
                 denom *= factorial(n)
-            coef = coef + _ordering_count(orders) * _joint_central_moment(orders, raw) / denom
+            # denom matches raw's dtype: a bare factorial >= 2**15 would autocast a
+            # float32 result to float64. It is exact in float32 (< 2**24 here).
+            jcm = _joint_central_moment(orders, raw)
+            coef = coef + _ordering_count(orders) * jcm / _const_like(denom, raw[0])
         series = series + coef * xi**m
     return series
 
@@ -309,7 +319,10 @@ def _central_moments(sigma, xi, kappa):
 def mean(mu, sigma, xi, kappa):
     raw = _neglogw_raw_moments(kappa)
     # Raw first scaled moment q1 = (M(xi) - 1)/xi = sum_m mu_{1+m}/(1+m)! xi^m near xi = 0.
-    series = sum(raw[1 + m] / factorial(1 + m) * xi**m for m in range(_MOMENT_SERIES_TERMS + 1))
+    series = sum(
+        raw[1 + m] / _const_like(factorial(1 + m), raw[1 + m]) * xi**m
+        for m in range(_MOMENT_SERIES_TERMS + 1)
+    )
     sx = _safe_xi(xi)
     q1 = pt.switch(
         pt.lt(pt.abs(xi), _MOMENT_SERIES_CUTOFF), series, (_pow_moment(1, sx, kappa) - 1) / sx
@@ -319,7 +332,8 @@ def mean(mu, sigma, xi, kappa):
 
 def median(mu, sigma, xi, kappa):
     # F = 1/2  ->  H = (1/2) ** (1/kappa); excess m = -log(1 - H).
-    excess = _ext_gpd_excess_from_log_prob(np.log(0.5), kappa)
+    log_half = _const_like(np.log(0.5), mu, sigma, xi, kappa)
+    excess = _ext_gpd_excess_from_log_prob(log_half, kappa)
     return _gpd_quantile_from_excess(excess, mu, sigma, xi)
 
 
@@ -356,23 +370,22 @@ def std(mu, sigma, xi, kappa):
 
 def skewness(mu, sigma, xi, kappa):
     variance, central3, _ = _central_moments(sigma, xi, kappa)
-    return pt.switch(pt.lt(xi, 1.0 / 3.0), central3 / variance**1.5, np.nan)
+    nan = _const_like(np.nan, mu, sigma, xi, kappa)
+    return pt.switch(pt.lt(xi, 1.0 / 3.0), central3 / variance**1.5, nan)
 
 
 def kurtosis(mu, sigma, xi, kappa):
     # Excess kurtosis.
     variance, _, central4 = _central_moments(sigma, xi, kappa)
-    return pt.switch(pt.lt(xi, 0.25), central4 / variance**2 - 3, np.nan)
+    nan = _const_like(np.nan, mu, sigma, xi, kappa)
+    return pt.switch(pt.lt(xi, 0.25), central4 / variance**2 - 3, nan)
 
 
 def entropy(mu, sigma, xi, kappa):
     # -E[log g(X)] in closed form; reduces to the GPD's log(sigma) + xi + 1 at kappa = 1.
+    euler_gamma = _const_like(np.euler_gamma, mu, sigma, xi, kappa)
     return (
-        pt.log(sigma)
-        - pt.log(kappa)
-        + 1
-        - 1 / kappa
-        + (1 + xi) * (pt.psi(kappa + 1) + pt.euler_gamma)
+        pt.log(sigma) - pt.log(kappa) + 1 - 1 / kappa + (1 + xi) * (pt.psi(kappa + 1) + euler_gamma)
     )
 
 

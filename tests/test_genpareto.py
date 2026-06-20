@@ -257,3 +257,13 @@ def test_value_continuous_through_xi_zero():
         lp = GenPareto.logpdf(value, 0.0, 2.0, xi).eval()
         np.testing.assert_allclose(lp, lp0, atol=1e-5)
     np.testing.assert_allclose(lp0, sp.expon.logpdf(value, scale=2.0), atol=1e-12)
+
+
+@pytest.mark.parametrize("dtype", ["float64", "float32"])
+def test_summary_stats_follow_input_dtype(dtype):
+    """mean/var/std/skewness/kurtosis/entropy/median/lmoments keep the input dtype."""
+    params = [pt.scalar(name, dtype=dtype) for name in ("mu", "sigma", "xi")]
+    names = ["mean", "var", "std", "skewness", "kurtosis", "entropy"]
+    names += ["median", "lmoment1", "lmoment2", "lmoment3", "lmoment4"]
+    for name in names:
+        assert getattr(GenPareto, name)(*params).dtype == dtype, name

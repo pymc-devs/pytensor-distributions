@@ -455,6 +455,20 @@ def test_logsf_small_kappa_in_the_body_matches_reference(kappa):
     np.testing.assert_allclose(got, ref, rtol=1e-9)
 
 
+@pytest.mark.parametrize("dtype", ["float64", "float32"])
+def test_summary_stats_follow_input_dtype(dtype):
+    """mean/var/std/skewness/kurtosis/entropy/median/lmoments keep the input dtype.
+
+    (Value precision under float32 is a separate matter -- the high-order central
+    moments cancel and lose accuracy in a small-|xi| band; only the dtype is asserted.)
+    """
+    params = [pt.scalar(name, dtype=dtype) for name in ("mu", "sigma", "xi", "kappa")]
+    names = ["mean", "var", "std", "skewness", "kurtosis", "entropy"]
+    names += ["median", "lmoment1", "lmoment2", "lmoment3", "lmoment4"]
+    for name in names:
+        assert getattr(ExtGenPareto, name)(*params).dtype == dtype, name
+
+
 def test_boundary_logp_value_holds_but_gradient_tracks_the_margin():
     mu, sigma, xi, kappa = 0.4, 1.3, -0.3, 2.5
     eps = np.finfo(np.float64).eps

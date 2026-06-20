@@ -5,6 +5,19 @@ from pytensor.tensor.variable import TensorVariable
 from pytensor_distributions.helper import ppf_bounds_cont
 
 
+def _const_like(value, *refs):
+    """``value`` as a constant in the upcast dtype of ``refs``.
+
+    Numpy scalars and Python floats that are not exactly float32-representable
+    (``np.nan``, ``np.log(2)``, ...) are strong float64, so using them directly
+    upcasts an otherwise-float32 result to float64. Casting to the inputs' dtype
+    keeps each function's output dtype following its arguments while preserving
+    full float64 precision when the inputs are float64.
+    """
+    dtype = np.result_type(*(pt.as_tensor_variable(r).dtype for r in refs))
+    return np.asarray(value, dtype=dtype)
+
+
 def _series_cutoff(dtype) -> float:
     """``|u|`` below which the divided-difference helpers switch to their series.
 
@@ -182,7 +195,7 @@ def mean(mu, sigma, xi):
 
 def median(mu, sigma, xi):
     # Quantile at p = 1/2: excess m = -log(1 - 1/2) = log 2.
-    return _gpd_quantile_from_excess(np.log(2.0), mu, sigma, xi)
+    return _gpd_quantile_from_excess(_const_like(np.log(2.0), mu, sigma, xi), mu, sigma, xi)
 
 
 def mode(mu, sigma, xi):
@@ -202,13 +215,13 @@ def std(mu, sigma, xi):
 
 def skewness(mu, sigma, xi):
     value = 2 * (1 + xi) * pt.sqrt(1 - 2 * xi) / (1 - 3 * xi)
-    return pt.switch(pt.lt(xi, 1.0 / 3.0), value, np.nan)
+    return pt.switch(pt.lt(xi, 1.0 / 3.0), value, _const_like(np.nan, mu, sigma, xi))
 
 
 def kurtosis(mu, sigma, xi):
     # Excess kurtosis.
     value = 3 * (1 - 2 * xi) * (2 * xi**2 + xi + 3) / ((1 - 3 * xi) * (1 - 4 * xi)) - 3
-    return pt.switch(pt.lt(xi, 0.25), value, np.nan)
+    return pt.switch(pt.lt(xi, 0.25), value, _const_like(np.nan, mu, sigma, xi))
 
 
 def entropy(mu, sigma, xi):
