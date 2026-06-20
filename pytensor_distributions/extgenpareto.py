@@ -1,3 +1,5 @@
+from math import comb, factorial
+
 import numpy as np
 import pytensor.tensor as pt
 from pytensor.tensor.special import betaln
@@ -163,13 +165,15 @@ def rvs(mu, sigma, xi, kappa, size=None, random_state=None):
     return _gpd_quantile_from_excess(excess, mu, sigma, xi)
 
 
-# Summary statistics. With the substitution x = mu + (sigma/xi)(W ** (-xi) - 1),
-# W ~ Beta(1, kappa), the power moments reduce to Beta functions:
-#   E[W ** (-j xi)] = kappa * B(1 - j xi, kappa),
-# finite (like the plain GPD) only for j xi < 1, so each moment is guarded. The
-# exponential-tail limit xi -> 0 is a 0/0 in those Beta forms, so each statistic switches
-# to its closed-form digamma/polygamma limit there; ``_safe_xi`` keeps the discarded
-# branch finite so its gradient is not poisoned.
+# Summary statistics. With x = mu + (sigma/xi)(W ** (-xi) - 1), W ~ Beta(1, kappa), the
+# r-th central moment is sigma ** r times q_r = E[((W ** (-xi) - 1)/xi - mean) ** r]. Its
+# exact Beta-function form is finite (like the plain GPD) only for r xi < 1 -- hence the
+# guards -- and cancels catastrophically as xi -> 0. q_r is one function of the order r:
+# near xi = 0 a Taylor series in xi (the same idea as _log1p_div / _expm1_div), the exact
+# Beta combination otherwise. The series coefficients are generic in r -- joint central
+# moments of L = -log(W), each tamed by a 1/(n!) factor so the factorial growth of the raw
+# moments does not spoil convergence -- built from L's cumulants
+#   kappa_k = (-1) ** (k - 1) [psi ** (k - 1)(kappa + 1) - psi ** (k - 1)(1)].
 
 
 def _pow_moment(j, xi, kappa):
@@ -188,23 +192,129 @@ def _safe_xi(xi):
     return pt.switch(pt.eq(xi, 0.0), 0.1, xi)
 
 
+_MOMENT_SERIES_TERMS = 8  # Taylor order m = 0..8 in xi.
+_MOMENT_SERIES_CUTOFF = 1.8e-2  # |xi| below which the series beats the cancelling exact form.
+
+# polygamma(d, 1) = (-1) ** (d + 1) * d! * zeta(d + 1), for d = 0..11. Baked as literals
+# because pytensor#2244 makes ``pt.polygamma(d, 1.0)`` (a constant argument) ~1e-9 inaccurate;
+# the runtime path ``pt.polygamma(d, kappa + 1)`` for a *symbolic* argument is exact.
+_POLYGAMMA_AT_ONE = (
+    -0.5772156649015329,
+    1.6449340668482266,
+    -2.404113806319188,
+    6.493939402266829,
+    -24.88626612344089,
+    122.08116743813386,
+    -726.0114797149845,
+    5060.549875237641,
+    -40400.97839874765,
+    363240.9114223827,
+    -3630593.3116066284,
+    39926622.98773108,
+)
+
+
+def _neglogw_raw_moments(kappa):
+    """Raw moments ``mu_0 .. mu_{TERMS + 4}`` of ``L = -log(W)``, ``W ~ Beta(1, kappa)``.
+
+    Built once from L's cumulants (polygamma) via the moment-cumulant recursion and shared
+    across every moment order.
+    """
+    n_max = _MOMENT_SERIES_TERMS + 4
+    cumulants = []
+    for k in range(1, n_max + 1):
+        d = k - 1
+        poly_kappa = pt.psi(kappa + 1) if d == 0 else pt.polygamma(d, kappa + 1)
+        cumulants.append((-1.0) ** d * (poly_kappa - _POLYGAMMA_AT_ONE[d]))
+    raw = [pt.ones_like(kappa)]
+    for n in range(1, n_max + 1):
+        raw.append(sum(comb(n - 1, i) * cumulants[n - 1 - i] * raw[i] for i in range(n)))
+    return raw
+
+
+def _partitions(total, parts):
+    """Non-increasing tuples of ``parts`` positive integers summing to ``total``."""
+    if parts == 1:
+        if total >= 1:
+            yield (total,)
+        return
+    for first in range(total - parts + 1, 0, -1):
+        for rest in _partitions(total - first, parts - 1):
+            if rest[0] <= first:
+                yield (first, *rest)
+
+
+def _ordering_count(partition):
+    """How many distinct orderings ``partition`` has (its multinomial coefficient)."""
+    count = factorial(len(partition))
+    for value in set(partition):
+        count //= factorial(partition.count(value))
+    return count
+
+
+def _joint_central_moment(orders, raw):
+    """Joint central moment ``E[prod_i (L ** o_i - mu_{o_i})]`` by subset inclusion-exclusion."""
+    r = len(orders)
+    total = 0.0
+    for mask in range(1 << r):
+        kept = sum(orders[i] for i in range(r) if mask >> i & 1)
+        term = raw[kept]
+        for i in range(r):
+            if not mask >> i & 1:
+                term = term * (-raw[orders[i]])
+        total = total + term
+    return total
+
+
+def _central_moment_series(r, xi, raw):
+    """Taylor series of ``q_r`` in ``xi``; the 1/n! factors tame the factorial raw moments."""
+    series = 0.0
+    for m in range(_MOMENT_SERIES_TERMS + 1):
+        coef = 0.0
+        for orders in _partitions(m + r, r):  # orders_i = j_i + 1 >= 1, sum_i = m + r
+            denom = 1
+            for n in orders:
+                denom *= factorial(n)
+            coef = coef + _ordering_count(orders) * _joint_central_moment(orders, raw) / denom
+        series = series + coef * xi**m
+    return series
+
+
+def _central_moment_exact(r, xi, kappa):
+    """Exact ``q_r`` from the Beta moments ``E[Y ** i] = M(i xi)``; accurate away from xi = 0."""
+    sx = _safe_xi(xi)
+    mean_y = _pow_moment(1, sx, kappa)
+    central = sum(
+        comb(r, i) * (-1.0) ** (r - i) * _pow_moment(i, sx, kappa) * mean_y ** (r - i)
+        for i in range(r + 1)
+    )
+    return central / sx**r
+
+
+def _scaled_central_moment(r, xi, kappa, raw):
+    """``q_r = E[((W ** (-xi) - 1)/xi - mean) ** r]``: series near xi = 0, exact otherwise."""
+    return pt.switch(
+        pt.lt(pt.abs(xi), _MOMENT_SERIES_CUTOFF),
+        _central_moment_series(r, xi, raw),
+        _central_moment_exact(r, xi, kappa),
+    )
+
+
 def _central_moments(sigma, xi, kappa):
-    """Central moments ``E[(X - mu) ** r]`` for r = 1..4 (about mu, not the mean)."""
-    c = sigma / xi
-    m1, m2, m3, m4 = (_pow_moment(j, xi, kappa) for j in (1, 2, 3, 4))
-    p1 = c * (m1 - 1)
-    p2 = c**2 * (m2 - 2 * m1 + 1)
-    p3 = c**3 * (m3 - 3 * m2 + 3 * m1 - 1)
-    p4 = c**4 * (m4 - 4 * m3 + 6 * m2 - 4 * m1 + 1)
-    return p1, p2, p3, p4
+    """Central moments ``E[(X - mean) ** r]`` for r = 2, 3, 4."""
+    raw = _neglogw_raw_moments(kappa)
+    return tuple(sigma**r * _scaled_central_moment(r, xi, kappa, raw) for r in (2, 3, 4))
 
 
 def mean(mu, sigma, xi, kappa):
+    raw = _neglogw_raw_moments(kappa)
+    # Raw first scaled moment q1 = (M(xi) - 1)/xi = sum_m mu_{1+m}/(1+m)! xi^m near xi = 0.
+    series = sum(raw[1 + m] / factorial(1 + m) * xi**m for m in range(_MOMENT_SERIES_TERMS + 1))
     sx = _safe_xi(xi)
-    general = mu + sigma / sx * (_pow_moment(1, sx, kappa) - 1)
-    limit = mu + sigma * (pt.psi(kappa + 1) + pt.euler_gamma)  # xi -> 0
-    value = pt.switch(pt.eq(xi, 0.0), limit, general)
-    return pt.switch(pt.lt(xi, 1), value, np.inf)
+    q1 = pt.switch(
+        pt.lt(pt.abs(xi), _MOMENT_SERIES_CUTOFF), series, (_pow_moment(1, sx, kappa) - 1) / sx
+    )
+    return pt.switch(pt.lt(xi, 1), mu + sigma * q1, np.inf)
 
 
 def median(mu, sigma, xi, kappa):
@@ -236,11 +346,8 @@ def mode(mu, sigma, xi, kappa):
 
 
 def var(mu, sigma, xi, kappa):
-    sx = _safe_xi(xi)
-    p1, p2, _, _ = _central_moments(sigma, sx, kappa)
-    limit = sigma**2 * (pt.polygamma(1, 1.0) - pt.polygamma(1, kappa + 1))  # xi -> 0
-    value = pt.switch(pt.eq(xi, 0.0), limit, p2 - p1**2)
-    return pt.switch(pt.lt(xi, 0.5), value, np.inf)
+    variance, _, _ = _central_moments(sigma, xi, kappa)
+    return pt.switch(pt.lt(xi, 0.5), variance, np.inf)
 
 
 def std(mu, sigma, xi, kappa):
@@ -248,25 +355,14 @@ def std(mu, sigma, xi, kappa):
 
 
 def skewness(mu, sigma, xi, kappa):
-    sx = _safe_xi(xi)
-    p1, p2, p3, _ = _central_moments(sigma, sx, kappa)
-    general = (p3 - 3 * p1 * p2 + 2 * p1**3) / (p2 - p1**2) ** 1.5
-    tg = pt.polygamma(1, 1.0) - pt.polygamma(1, kappa + 1)
-    limit = (pt.polygamma(2, kappa + 1) - pt.polygamma(2, 1.0)) / tg**1.5  # xi -> 0
-    value = pt.switch(pt.eq(xi, 0.0), limit, general)
-    return pt.switch(pt.lt(xi, 1.0 / 3.0), value, np.nan)
+    variance, central3, _ = _central_moments(sigma, xi, kappa)
+    return pt.switch(pt.lt(xi, 1.0 / 3.0), central3 / variance**1.5, np.nan)
 
 
 def kurtosis(mu, sigma, xi, kappa):
     # Excess kurtosis.
-    sx = _safe_xi(xi)
-    p1, p2, p3, p4 = _central_moments(sigma, sx, kappa)
-    variance = p2 - p1**2
-    general = (p4 - 4 * p1 * p3 + 6 * p1**2 * p2 - 3 * p1**4) / variance**2 - 3
-    tg = pt.polygamma(1, 1.0) - pt.polygamma(1, kappa + 1)
-    limit = (pt.polygamma(3, 1.0) - pt.polygamma(3, kappa + 1)) / tg**2  # xi -> 0
-    value = pt.switch(pt.eq(xi, 0.0), limit, general)
-    return pt.switch(pt.lt(xi, 0.25), value, np.nan)
+    variance, _, central4 = _central_moments(sigma, xi, kappa)
+    return pt.switch(pt.lt(xi, 0.25), central4 / variance**2 - 3, np.nan)
 
 
 def entropy(mu, sigma, xi, kappa):
