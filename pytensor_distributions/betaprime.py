@@ -99,19 +99,15 @@ def sf(x, alpha, beta):
 
 def rvs(alpha, beta, size=None, random_state=None):
     rng, g1 = pt.random.gamma(
-        shape=alpha, scale=1, size=size, rng=random_state, return_next_rng=True)
-    g2 = pt.random.gamma(
-        shape=beta, scale=1, size=size, rng=rng, return_next_rng=True)[1]
+        shape=alpha, scale=1, size=size, rng=random_state, return_next_rng=True
+    )
+    g2 = pt.random.gamma(shape=beta, scale=1, size=size, rng=rng, return_next_rng=True)[1]
     return g1 / g2
 
 
 def logpdf(x, alpha, beta):
     z = pt.switch(pt.or_(pt.isinf(x), pt.le(x, 0)), 1.0, x)
-    result = (
-        xlogy(alpha - 1, z)
-        - (alpha + beta) * pt.log1p(z)
-        - betaln(alpha, beta)
-    )
+    result = xlogy(alpha - 1, z) - (alpha + beta) * pt.log1p(z) - betaln(alpha, beta)
     return pt.switch(
         pt.le(x, 0),
         -pt.inf,
