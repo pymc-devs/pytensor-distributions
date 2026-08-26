@@ -98,8 +98,10 @@ def sf(x, alpha, beta):
 
 
 def rvs(alpha, beta, size=None, random_state=None):
-    rng, g1 = pt.random.gamma(shape=alpha, scale=1, size=size, rng=random_state, return_next_rng=True)
-    g2 = pt.random.gamma(shape=beta, scale=1, size=size, rng=rng, return_next_rng=True)[1]
+    rng, g1 = pt.random.gamma(
+        shape=alpha, scale=1, size=size, rng=random_state, return_next_rng=True)
+    g2 = pt.random.gamma(
+        shape=beta, scale=1, size=size, rng=rng, return_next_rng=True)[1]
     return g1 / g2
 
 
