@@ -12,7 +12,7 @@ def mean(alpha, beta):
 
 def mode(alpha, beta):
     alpha_b, beta_b = pt.broadcast_arrays(alpha, beta)
-    return pt.where(alpha_b >= 1, (alpha_b - 1) / (beta_b + 1), 0.0)
+    return pt.where(alpha_b > 1, (alpha_b - 1) / (beta_b + 1), 0.0)
 
 
 def median(alpha, beta):
@@ -56,15 +56,15 @@ def lmoment1(alpha, beta):
 
 
 def lmoment2(alpha, beta):
-    return _lmoments(ppf, alpha, beta, r=2)
+    return pt.switch(pt.gt(beta, 1), _lmoments(ppf, alpha, beta, r=2), pt.inf)
 
 
 def lmoment3(alpha, beta):
-    return _lmoments(ppf, alpha, beta, r=3)
+    return pt.switch(pt.gt(beta, 1), _lmoments(ppf, alpha, beta, r=3), pt.inf)
 
 
 def lmoment4(alpha, beta):
-    return _lmoments(ppf, alpha, beta, r=4)
+    return pt.switch(pt.gt(beta, 1), _lmoments(ppf, alpha, beta, r=4), pt.inf)
 
 
 def entropy(alpha, beta):
@@ -98,24 +98,32 @@ def sf(x, alpha, beta):
 
 
 def rvs(alpha, beta, size=None, random_state=None):
-    g1 = pt.random.gamma(shape=alpha, scale=1, size=size, rng=random_state, return_next_rng=True)[1]
-    g2 = pt.random.gamma(shape=beta, scale=1, size=size, rng=random_state, return_next_rng=True)[1]
+    rng, g1 = pt.random.gamma(shape=alpha, scale=1, size=size, rng=random_state, return_next_rng=True)
+    g2 = pt.random.gamma(shape=beta, scale=1, size=size, rng=rng, return_next_rng=True)[1]
     return g1 / g2
 
 
-def logcdf(x, alpha, beta):
+def logpdf(x, alpha, beta):
+    z = pt.switch(pt.or_(pt.isinf(x), pt.le(x, 0)), 1.0, x)
+    result = (
+        xlogy(alpha - 1, z)
+        - (alpha + beta) * pt.log1p(z)
+        - betaln(alpha, beta)
+    )
     return pt.switch(
-        pt.lt(x, 0),
+        pt.le(x, 0),
         -pt.inf,
-        pt.log(pt.betainc(alpha, beta, x / (1 + x))),
+        pt.switch(pt.isinf(x), -pt.inf, result),
     )
 
 
-def logpdf(x, alpha, beta):
+def logcdf(x, alpha, beta):
+    z = pt.switch(pt.isinf(x), 1.0, x)
+    result = pt.log(pt.betainc(alpha, beta, z / (1 + z)))
     return pt.switch(
         pt.lt(x, 0),
         -pt.inf,
-        xlogy(alpha - 1, x) - (alpha + beta) * pt.log1p(x) - betaln(alpha, beta),
+        pt.switch(pt.isinf(x), 0.0, result),
     )
 
 
