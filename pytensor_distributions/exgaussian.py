@@ -118,14 +118,27 @@ def logcdf(x, mu, sigma, nu):
 
 def logpdf(x, mu, sigma, nu):
     return pt.switch(
-        pt.ge(nu, 0.05 * sigma),
-        (
-            -pt.log(nu)
-            + (mu - x) / nu
-            + 0.5 * (sigma / nu) ** 2
-            + normal_logcdf(x - (mu + (sigma**2) / nu), 0.0, sigma)
+        pt.lt(nu, sigma),
+        pt.switch(
+            pt.or_(pt.eq(x, -pt.inf), pt.eq(x, pt.inf)),
+            -pt.inf,
+            (
+                -pt.log(nu)
+                + (mu - x) / nu
+                + 0.5 * (sigma / nu) ** 2
+                + normal_logcdf(x - (mu + (sigma**2) / nu), 0.0, sigma)
+            ),
         ),
-        normal_logpdf(x, mu, sigma),
+        pt.switch(
+            pt.ge(nu, 0.05 * sigma),
+            (
+                -pt.log(nu)
+                + (mu - x) / nu
+                + 0.5 * (sigma / nu) ** 2
+                + normal_logcdf(x - (mu + (sigma**2) / nu), 0.0, sigma)
+            ),
+            normal_logpdf(x, mu, sigma),
+        ),
     )
 
 
