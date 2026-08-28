@@ -102,4 +102,9 @@ def logpdf(x, mu, sigma):
 
 
 def logsf(x, mu, sigma):
-    return logcdf(-x, -mu, sigma)
+    z = (x - mu) / sigma
+    return pt.switch(
+        pt.gt(z, 1.0),
+        pt.log(pt.erfcx(z / pt.sqrt(2.0)) / 2.0) - pt.sqr(z) / 2.0,
+        pt.log1p(-pt.erfc(-z / pt.sqrt(2.0)) / 2.0),
+    )
