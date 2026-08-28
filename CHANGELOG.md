@@ -1,3 +1,19 @@
+<a id="v0.3.0"></a>
+# [v0.3.0](https://github.com/pymc-devs/pytensor-distributions/releases/tag/v0.3.0) - 2026-08-28
+
+## What's Changed
+* Add Beta Prime by [@rohanbabbar04](https://github.com/rohanbabbar04) in [#63](https://github.com/pymc-devs/pytensor-distributions/pull/63)
+* Rewrite normal logsf by [@aloctavodia](https://github.com/aloctavodia) in [#64](https://github.com/pymc-devs/pytensor-distributions/pull/64)
+* Fix numerical instability in exgaussian for small K by [@aloctavodia](https://github.com/aloctavodia) in [#65](https://github.com/pymc-devs/pytensor-distributions/pull/65)
+
+## New Contributors
+* [@rohanbabbar04](https://github.com/rohanbabbar04) made their first contribution in [#63](https://github.com/pymc-devs/pytensor-distributions/pull/63)
+
+**Full Changelog**: https://github.com/pymc-devs/pytensor-distributions/compare/v0.2.0...v0.3.0
+
+[Changes][v0.3.0]
+
+
 <a id="v0.2.0"></a>
 # [v0.2.0](https://github.com/pymc-devs/pytensor-distributions/releases/tag/v0.2.0) - 2026-06-08
 
@@ -100,6 +116,7 @@
 [Changes][v0.1.0]
 
 
+[v0.3.0]: https://github.com/pymc-devs/pytensor-distributions/compare/v0.2.0...v0.3.0
 [v0.2.0]: https://github.com/pymc-devs/pytensor-distributions/compare/v0.1.3...v0.2.0
 [v0.1.3]: https://github.com/pymc-devs/pytensor-distributions/compare/v0.1.2...v0.1.3
 [v0.1.2]: https://github.com/pymc-devs/pytensor-distributions/compare/v0.1.1...v0.1.2
