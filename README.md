@@ -6,7 +6,7 @@ PyTensor-powered distributions
 
 PyTensor-distributions provides a collection of core probability expressions implemented in PyTensor. 
 
-The goal of this package is to work as a unified, well tested and performant source for core probability expressions. This reduces redundancy across packages and allows other libraries to focus on providing specialized features and APIs on top of these core expressions.
+The goal of this package is to work as a unified, well-tested, and performant source for core probability expressions. This reduces redundancy across packages and allows other libraries to focus on providing specialized features and APIs on top of these core expressions.
 
 The core expressions implemented in PyTensor-distributions are:
 
@@ -24,12 +24,12 @@ The core expressions implemented in PyTensor-distributions are:
 - `var`: the variance of a distribution.
 - `std`: the standard deviation of a distribution.
 - `skewness`: the skewness of a distribution.
-- `kurtosis`: the kurtosis of a distribution.
-- `lmoments`: The first lmoment is the mean, so we omit it. For the third and fourth L-moments, we use the ratios.
+- `kurtosis`: the (excess) kurtosis of a distribution.
+- `lmoments`: The first L-moment is the mean, so we omit it. For the third and fourth L-moments, we use the ratios.
 - `entropy`: the entropy of a distribution.
 - `rvs`: the random variates of a distribution.
 
-Some distributions may not have all of these expressions implemented.
+Some distributions may not implement all of these expressions.
 
 The package follows a very minimal design, with one file per distribution and some utility files for common functions and tests. The core expressions are implemented as a collection of functions; no classes are used. This is on purpose, to keep the package as simple as possible and let other packages implement more structured APIs on top of these core expressions.
 
