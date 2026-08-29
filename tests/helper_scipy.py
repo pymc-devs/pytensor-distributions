@@ -84,6 +84,10 @@ def run_distribution_tests(
         ]
     )
 
+    # Evaluate removing this once scipy > 1.19 get released
+    if name == "exgaussian":
+        extended_vals = extended_vals[np.isfinite(extended_vals)]
+
     # PDF
     actual_pdf = p_dist.pdf(extended_vals, *p_params).eval()
     try:
