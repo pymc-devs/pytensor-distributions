@@ -1,3 +1,15 @@
+<a id="v0.3.1"></a>
+# [v0.3.1](https://github.com/pymc-devs/pytensor-distributions/releases/tag/v0.3.1) - 2026-08-29
+
+## What's Changed
+* Revert 65 by [@aloctavodia](https://github.com/aloctavodia) in [#67](https://github.com/pymc-devs/pytensor-distributions/pull/67)
+
+
+**Full Changelog**: https://github.com/pymc-devs/pytensor-distributions/compare/v0.3.0...v0.3.1
+
+[Changes][v0.3.1]
+
+
 <a id="v0.3.0"></a>
 # [v0.3.0](https://github.com/pymc-devs/pytensor-distributions/releases/tag/v0.3.0) - 2026-08-28
 
@@ -116,6 +128,7 @@
 [Changes][v0.1.0]
 
 
+[v0.3.1]: https://github.com/pymc-devs/pytensor-distributions/compare/v0.3.0...v0.3.1
 [v0.3.0]: https://github.com/pymc-devs/pytensor-distributions/compare/v0.2.0...v0.3.0
 [v0.2.0]: https://github.com/pymc-devs/pytensor-distributions/compare/v0.1.3...v0.2.0
 [v0.1.3]: https://github.com/pymc-devs/pytensor-distributions/compare/v0.1.2...v0.1.3
