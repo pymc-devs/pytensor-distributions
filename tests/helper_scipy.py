@@ -288,6 +288,14 @@ def run_lmoments_test(p_dist, p_params, name=None, rtol=5e-2, atol=5e-2, sample_
             if p_params[0].eval() <= 1:
                 s_l2 = s_tau3 = s_tau4 = float("inf")
 
+        if name == "frechet":
+            if p_params[0].eval() <= 1:
+                s_l2 = s_tau3 = s_tau4 = float("inf")
+            elif p_params[0].eval() <= 2:
+                s_tau3 = s_tau4 = float("inf")
+            elif p_params[0].eval() <= 3:
+                s_tau4 = float("inf")
+
         if name in ["loglogistic", "betaprime"]:
             if p_params[1].eval() <= 1:
                 s_l2 = s_tau3 = s_tau4 = float("inf")
