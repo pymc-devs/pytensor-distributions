@@ -1,3 +1,16 @@
+<a id="v0.3.2"></a>
+# [v0.3.2](https://github.com/pymc-devs/pytensor-distributions/releases/tag/v0.3.2) - 2026-09-04
+
+## What's Changed
+* Add Frechet distribution by [@aloctavodia](https://github.com/aloctavodia) in [#69](https://github.com/pymc-devs/pytensor-distributions/pull/69)
+* Robustify binomial logpmf by [@aloctavodia](https://github.com/aloctavodia) in [#70](https://github.com/pymc-devs/pytensor-distributions/pull/70)
+
+
+**Full Changelog**: https://github.com/pymc-devs/pytensor-distributions/compare/v0.3.1...v0.3.2
+
+[Changes][v0.3.2]
+
+
 <a id="v0.3.1"></a>
 # [v0.3.1](https://github.com/pymc-devs/pytensor-distributions/releases/tag/v0.3.1) - 2026-08-29
 
@@ -128,6 +141,7 @@
 [Changes][v0.1.0]
 
 
+[v0.3.2]: https://github.com/pymc-devs/pytensor-distributions/compare/v0.3.1...v0.3.2
 [v0.3.1]: https://github.com/pymc-devs/pytensor-distributions/compare/v0.3.0...v0.3.1
 [v0.3.0]: https://github.com/pymc-devs/pytensor-distributions/compare/v0.2.0...v0.3.0
 [v0.2.0]: https://github.com/pymc-devs/pytensor-distributions/compare/v0.1.3...v0.2.0
