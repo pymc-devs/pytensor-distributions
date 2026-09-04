@@ -84,11 +84,19 @@ def logpdf(x, n, p):
     return pt.switch(
         pt.or_(pt.lt(x, 0), pt.gt(x, n)),
         -pt.inf,
-        pt.gammaln(n + 1)
-        - pt.gammaln(x + 1)
-        - pt.gammaln(n - x + 1)
-        + xlogy(x, p)
-        + (n - x) * pt.log1p(-p),
+        pt.switch(
+            pt.eq(p, 0),
+            pt.switch(pt.eq(x, 0), 0, -pt.inf),
+            pt.switch(
+                pt.eq(p, 1),
+                pt.switch(pt.eq(x, n), 0, -pt.inf),
+                pt.gammaln(n + 1)
+                - pt.gammaln(x + 1)
+                - pt.gammaln(n - x + 1)
+                + xlogy(x, p)
+                + (n - x) * pt.log1p(-p),
+            ),
+        ),
     )
 
 
