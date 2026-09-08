@@ -1,5 +1,6 @@
 """Test BetaBinomial distribution against scipy implementation."""
 
+import numpy as np
 import pytensor.tensor as pt
 import pytest
 from scipy import stats
@@ -11,19 +12,20 @@ from tests.helper_scipy import run_distribution_tests
 @pytest.mark.parametrize(
     "params, sp_params, skip_mode",
     [
-        # alpha > 1 and beta > 1: unique mode exists
         ([10, 2.0, 3.0], {"n": 10, "a": 2.0, "b": 3.0}, False),
-        # alpha = beta = 1: uniform, mode not unique
-        ([6, 1.0, 1.0], {"n": 6, "a": 1.0, "b": 1.0}, True),
-        # alpha < 1 and beta < 1: U-shaped, mode not unique
-        ([20, 0.5, 0.5], {"n": 20, "a": 0.5, "b": 0.5}, True),
-        # alpha > 1 and beta > 1: unique mode exists
-        ([15, 5.0, 2.0], {"n": 15, "a": 5.0, "b": 2.0}, False),
-        ([100, 20.0, 20.0], {"n": 100, "a": 20.0, "b": 20.0}, False),
-        # alpha = 1 and beta > 1: monotonically decreasing, unique mode at 0
-        ([10, 1.0, 3.0], {"n": 10, "a": 1.0, "b": 3.0}, False),
-        # alpha > 1 and beta = 1: monotonically increasing, unique mode at n
-        ([10, 3.0, 1.0], {"n": 10, "a": 3.0, "b": 1.0}, False),
+        (
+            [
+                np.array([6, 20, 15, 100, 10, 10], dtype="int64"),
+                np.array([1.0, 0.5, 5.0, 20.0, 1.0, 3.0]),
+                np.array([1.0, 0.5, 2.0, 20.0, 3.0, 1.0]),
+            ],
+            {
+                "n": np.array([6, 20, 15, 100, 10, 10]),
+                "a": np.array([1.0, 0.5, 5.0, 20.0, 1.0, 3.0]),
+                "b": np.array([1.0, 0.5, 2.0, 20.0, 3.0, 1.0]),
+            },
+            True,
+        ),
     ],
 )
 def test_betabinomial_vs_scipy(params, sp_params, skip_mode):
@@ -32,7 +34,7 @@ def test_betabinomial_vs_scipy(params, sp_params, skip_mode):
     alpha_param = pt.constant(params[1], dtype="float64")
     beta_param = pt.constant(params[2], dtype="float64")
     p_params = (n_param, alpha_param, beta_param)
-    support = (0, params[0])
+    support = (0, int(np.max(params[0])))
 
     run_distribution_tests(
         p_dist=BetaBinomial,

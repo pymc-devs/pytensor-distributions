@@ -1,5 +1,6 @@
 """Test Chi-squared distribution against scipy implementation."""
 
+import numpy as np
 import pytest
 from scipy import stats
 
@@ -11,9 +12,7 @@ from tests.helper_scipy import make_params, run_distribution_tests
     "params, sp_params",
     [
         ([1.0], {"df": 1.0}),
-        ([5.0], {"df": 5.0}),
-        ([0.5], {"df": 0.5}),
-        ([100.0], {"df": 100.0}),
+        ([np.array([5.0, 0.5, 100.0])], {"df": np.array([5.0, 0.5, 100.0])}),
     ],
 )
 def test_chisquared_vs_scipy(params, sp_params):

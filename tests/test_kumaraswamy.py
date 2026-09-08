@@ -1,5 +1,6 @@
 """Test Kumaraswamy distribution against scipy implementation."""
 
+import numpy as np
 import pytest
 from scipy import stats
 
@@ -12,7 +13,16 @@ from tests.helper_scipy import make_params, run_distribution_tests
     "params, sp_params",
     [
         ([1.00000001, 5.0], {"a": 1.00000001, "b": 5}),
-        ([1.00000001, 100.0], {"a": 1.00000001, "b": 100.0}),
+        (
+            [
+                np.array([1.00000001]),
+                np.array([100.0]),
+            ],
+            {
+                "a": np.array([1.00000001]),
+                "b": np.array([100.0]),
+            },
+        ),
     ],
 )
 def test_kumaraswamy_vs_scipy(params, sp_params):

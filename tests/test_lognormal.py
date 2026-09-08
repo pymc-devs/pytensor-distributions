@@ -12,10 +12,17 @@ from tests.helper_scipy import make_params, run_distribution_tests
     "params, sp_params",
     [
         ([2.0, 0.5], {"s": 0.5, "loc": 0, "scale": np.exp(2.0)}),
-        ([0.0, 1.0], {"s": 1.0, "loc": 0, "scale": 1.0}),
-        ([-1.0, 0.25], {"s": 0.25, "loc": 0, "scale": np.exp(-1.0)}),
-        ([0.0, 0.001], {"s": 0.001, "loc": 0, "scale": 1.0}),
-        ([5.0, 1.5], {"s": 1.5, "loc": 0, "scale": np.exp(5.0)}),
+        (
+            [
+                np.array([0.0, -1.0, 0.0, 5.0]),
+                np.array([1.0, 0.25, 0.001, 1.5]),
+            ],
+            {
+                "s": np.array([1.0, 0.25, 0.001, 1.5]),
+                "loc": 0,
+                "scale": np.exp(np.array([0.0, -1.0, 0.0, 5.0])),
+            },
+        ),
     ],
 )
 def test_lognormal_vs_scipy(params, sp_params):

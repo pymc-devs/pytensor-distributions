@@ -10,24 +10,35 @@ from tests.helper_scipy import make_params, run_distribution_tests
 @pytest.mark.parametrize(
     "params, sp_params",
     [
-        # mu, sigma, lower, upper -> scipy truncnorm uses a, b, loc, scale
-        # a = (lower - mu) / sigma, b = (upper - mu) / sigma
-        # One-sided truncation (avoids median near 0)
         ([0.0, 1.0, 0.0, 3.0], {"a": 0.0, "b": 3.0, "loc": 0.0, "scale": 1.0}),
-        ([0.0, 1.0, -3.0, 0.0], {"a": -3.0, "b": 0.0, "loc": 0.0, "scale": 1.0}),
-        # Non-zero mu with symmetric truncation
-        ([5.0, 2.0, 0.0, 10.0], {"a": -2.5, "b": 2.5, "loc": 5.0, "scale": 2.0}),
-        ([3.0, 1.0, 1.0, 5.0], {"a": -2.0, "b": 2.0, "loc": 3.0, "scale": 1.0}),
-        ([1.0, 0.5, 0.0, 2.0], {"a": -2.0, "b": 2.0, "loc": 1.0, "scale": 0.5}),
-        # Asymmetric truncation
-        ([0.0, 1.0, -3.0, 1.0], {"a": -3.0, "b": 1.0, "loc": 0.0, "scale": 1.0}),
-        ([2.0, 1.5, -1.0, 5.0], {"a": -2.0, "b": 2.0, "loc": 2.0, "scale": 1.5}),
+        (
+            [
+                np.array([0.0, 5.0, 3.0, 1.0, 0.0, 2.0]),
+                np.array([1.0, 2.0, 1.0, 0.5, 1.0, 1.5]),
+                np.array([-3.0, 0.0, 1.0, 0.0, -3.0, -1.0]),
+                np.array([0.0, 10.0, 5.0, 2.0, 1.0, 5.0]),
+            ],
+            {
+                "a": (
+                    np.array([-3.0, 0.0, 1.0, 0.0, -3.0, -1.0])
+                    - np.array([0.0, 5.0, 3.0, 1.0, 0.0, 2.0])
+                )
+                / np.array([1.0, 2.0, 1.0, 0.5, 1.0, 1.5]),
+                "b": (
+                    np.array([0.0, 10.0, 5.0, 2.0, 1.0, 5.0])
+                    - np.array([0.0, 5.0, 3.0, 1.0, 0.0, 2.0])
+                )
+                / np.array([1.0, 2.0, 1.0, 0.5, 1.0, 1.5]),
+                "loc": np.array([0.0, 5.0, 3.0, 1.0, 0.0, 2.0]),
+                "scale": np.array([1.0, 2.0, 1.0, 0.5, 1.0, 1.5]),
+            },
+        ),
     ],
 )
 def test_truncatednormal_vs_scipy(params, sp_params):
     p_params = make_params(*params, dtype="float64")
     lower, upper = params[2], params[3]
-    support = (lower, upper)
+    support = (float(np.min(lower)), float(np.max(upper)))
 
     run_distribution_tests(
         p_dist=TruncatedNormal,

@@ -1,5 +1,6 @@
 """Tests for the HalfStudentT distribution."""
 
+import numpy as np
 import pytest
 from scipy import stats
 
@@ -10,22 +11,13 @@ from tests.helper_scipy import make_params, run_distribution_tests
 test_cases = [
     # Very high nu, some functions use a HalfNormal approximation
     {
-        "params": [1e6, 2.0],
+        "params": [
+            np.array([1e6, 1e4]),
+            np.array([2.0, 2.0]),
+        ],
         "sp_dist": stats.halfnorm,
-        "sp_params": {"loc": 0, "scale": 2},
+        "sp_params": {"loc": 0, "scale": np.array([2.0, 2.0])},
         "name": "halfstudent_high_nu_approx",
-        "special_settings": {
-            "skip_skewness": True,
-            "skip_kurtosis": True,
-            "use_quantiles_for_rvs": True,
-        },
-    },
-    # Large nu but below halfnormal approximation
-    {
-        "params": [1e4, 2.0],
-        "sp_dist": stats.halfnorm,
-        "sp_params": {"loc": 0, "scale": 2},
-        "name": "halfstudent_large_nu_exact",
         "special_settings": {
             "entropy_rtol": 1e-2,
             "pdf_rtol": 1e-2,

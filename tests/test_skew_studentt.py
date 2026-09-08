@@ -11,19 +11,25 @@ from tests.helper_scipy import make_params, run_distribution_tests
 @pytest.mark.parametrize(
     "params",
     [
-        # (a, b, mu, sigma)
-        (5.0, 5.0, 0.0, 1.0),  # Symmetric case (a = b)
-        (8.0, 4.0, 0.0, 1.0),  # Positive skew (a > b)
-        (4.0, 8.0, 0.0, 1.0),  # Negative skew (a < b)
-        (10.0, 5.0, 2.0, 3.0),  # With location and scale
-        (6.0, 3.0, -1.0, 2.0),  # Another positive skew case
+        (5.0, 5.0, 0.0, 1.0),
+        (
+            np.array([8.0, 4.0, 10.0, 6.0]),
+            np.array([4.0, 8.0, 5.0, 3.0]),
+            np.array([0.0, 0.0, 2.0, -1.0]),
+            np.array([1.0, 1.0, 3.0, 2.0]),
+        ),
     ],
 )
 def test_skew_studentt_vs_scipy(params):
     """Test skew student-t distribution against scipy.stats.jf_skew_t."""
     a, b, mu, sigma = params
     p_params = make_params(a, b, mu, sigma, dtype="float64")
-    sp_params = {"a": a, "b": b, "loc": mu, "scale": sigma}
+    sp_params = {
+        "a": np.asarray(a),
+        "b": np.asarray(b),
+        "loc": np.asarray(mu),
+        "scale": np.asarray(sigma),
+    }
 
     run_distribution_tests(
         p_dist=SkewStudentT,

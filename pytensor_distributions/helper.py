@@ -166,12 +166,12 @@ def discrete_entropy(min_x, max_x, logpdf, *params):
     else:
         broadcast_shape = pt.broadcast_arrays(*params)[0]
 
-    k_vals = pt.arange(min_x, max_x)
+    k_vals = pt.arange(pt.min(min_x), pt.max(max_x))
     k_broadcast = k_vals.reshape((-1,) + (1,) * broadcast_shape.ndim)
 
     log_probs = logpdf(k_broadcast, *params)
-
-    result = pt.sum(-pt.exp(log_probs) * log_probs, axis=0)
+    # Zero out k values outside a column's support (log_probs == -inf) to avoid 0 * -inf = nan
+    result = pt.sum(-pt.switch(pt.isinf(log_probs), 0.0, pt.exp(log_probs) * log_probs), axis=0)
 
     return pt.squeeze(result) if broadcast_shape.ndim == 0 else result
 
@@ -343,33 +343,37 @@ def von_mises_cdf(x, mu, kappa):
     CK = 50.0
     p = pt.cast(pt.clip(pt.round(1 + 28.0 + 0.5 * kappa - 100.0 / (kappa + 5.0)), 5, 50), "int32")
 
-    use_series = kappa < CK
-    n_values = pt.arange(1, p + 1, dtype="float64")
+    use_series = pt.lt(kappa, CK)
+    # arange requires a scalar stop; the per-column mask below drops the
+    # extra terms for columns with a smaller p
+    n_values = pt.arange(1, pt.max(p) + 1, dtype="float64")
 
-    n_expanded = n_values[:, None]
-    kappa_expanded = pt.atleast_1d(kappa)[None, :]
-    x_expanded = pt.atleast_1d(x_wrapped)[None, :]
+    kappa_flat = pt.atleast_1d(kappa)  # (K,)
+    n_expanded = n_values[:, None, None]  # (n, 1, 1)
+    kappa_expanded = kappa_flat[None, None, :]  # (1, 1, K)
+    x_expanded = pt.atleast_1d(x_wrapped)[None]  # (1, N) / (1, N, P) / (1, 1)
 
-    bessel_ratio = pt.ive(n_expanded, kappa_expanded) / pt.ive(0, kappa_expanded)
-    terms = bessel_ratio * pt.sin(n_expanded * x_expanded) / n_expanded
+    bessel_ratio = (
+        pt.ive(n_expanded, kappa_expanded) / pt.ive(0.0, kappa_flat)[None, None, :]
+    )  # (n, 1, K)
+    terms = bessel_ratio * pt.sin(n_expanded * x_expanded) / n_expanded  # (n, 1, N[, P], K)
 
-    mask = n_values[:, None] <= pt.atleast_1d(p)[None, :]
+    mask = n_values[:, None, None] <= pt.atleast_1d(p)[None, None, :]  # (n, 1, K)
     masked_terms = pt.switch(mask, terms, 0.0)
-    series_sum = pt.sum(masked_terms, axis=0)
+    series_sum = pt.sum(masked_terms, axis=0)  # (1, N[, P], K)
 
-    series_sum = pt.squeeze(series_sum)
-
-    cdf_series = 0.5 + x_wrapped / (2 * pt.pi) + series_sum / pt.pi
-    cdf_series = pt.clip(cdf_series, 0.0, 1.0)
+    cdf_series = pt.clip(
+        0.5 + pt.atleast_1d(x_wrapped) / (2 * pt.pi) + series_sum / pt.pi, 0.0, 1.0
+    )  # (1, N[, P], K)
 
     # Normal approximation
-    b = pt.sqrt(2 / pt.pi) / pt.ive(0.0, kappa)
-    z = b * pt.sin(x_wrapped / 2.0)
-    cdf_norm = 0.5 * (1.0 + pt.erf(z / pt.sqrt(2.0)))
+    b = pt.sqrt(2 / pt.pi) / pt.ive(0.0, kappa_flat)  # (K,)
+    z = b * pt.sin(pt.atleast_1d(x_wrapped) / 2.0)  # (N[, P], K)
+    cdf_norm = 0.5 * (1.0 + pt.erf(z / pt.sqrt(2.0)))[None]  # (1, N[, P], K)
 
     result = pt.switch(use_series, cdf_series, cdf_norm)
     result = result + ix
-    return result
+    return pt.squeeze(result)
 
 
 def continuous_mode(lower, upper, logpdf, *params, n_points=200):

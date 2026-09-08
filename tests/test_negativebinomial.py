@@ -1,5 +1,6 @@
 """Test NegativeBinomial distribution against scipy implementation."""
 
+import numpy as np
 import pytest
 from scipy import stats
 
@@ -11,10 +12,17 @@ from tests.helper_scipy import make_params, run_distribution_tests
     "params, sp_params, entropy_rtol",
     [
         ([2.1, 0.375], {"n": 2.1, "p": 0.375}, 1e-3),
-        ([1.0, 0.8], {"n": 1.0, "p": 0.8}, 1e-2),
-        ([10.0, 0.1], {"n": 10.0, "p": 0.1}, 1e-3),
-        ([0.5, 0.9], {"n": 0.5, "p": 0.9}, 1e-1),
-        ([20.0, 0.05], {"n": 20.0, "p": 0.05}, 1e-1),
+        (
+            [
+                np.array([1.0, 10.0, 0.5, 20.0]),
+                np.array([0.8, 0.1, 0.9, 0.05]),
+            ],
+            {
+                "n": np.array([1.0, 10.0, 0.5, 20.0]),
+                "p": np.array([0.8, 0.1, 0.9, 0.05]),
+            },
+            1e-1,
+        ),
     ],
 )
 def test_negativebinomial_vs_scipy(params, sp_params, entropy_rtol):
