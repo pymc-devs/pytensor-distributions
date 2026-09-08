@@ -101,4 +101,5 @@ def logpdf(x, mu, beta):
 
 
 def logsf(x, mu, beta):
-    return pt.log1p(-pt.exp(-pt.exp(-(x - mu) / beta)))
+    z = (x - mu) / beta
+    return pt.log(-pt.expm1(-pt.exp(-z)))

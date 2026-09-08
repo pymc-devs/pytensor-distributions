@@ -92,7 +92,7 @@ def logcdf(x, mu, s):
 
 def logpdf(x, mu, s):
     z = (x - mu) / s
-    return pt.switch(pt.eq(x, -pt.inf), -pt.inf, -pt.log(s) - z - 2.0 * pt.log1p(pt.exp(-z)))
+    return pt.switch(pt.eq(x, -pt.inf), -pt.inf, -pt.log(s) - z - 2.0 * pt.log1pexp(-z))
 
 
 def logsf(x, mu, s):

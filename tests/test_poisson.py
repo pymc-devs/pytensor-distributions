@@ -1,5 +1,6 @@
 """Test Poisson distribution against scipy implementation."""
 
+import numpy as np
 import pytest
 from scipy import stats
 
@@ -11,8 +12,7 @@ from tests.helper_scipy import make_params, run_distribution_tests
     "params, sp_params",
     [
         ([2.0], {"mu": 2.0}),
-        ([0.01], {"mu": 0.01}),
-        ([100.0], {"mu": 100.0}),
+        ([np.array([0.01, 100.0])], {"mu": np.array([0.01, 100.0])}),
     ],
 )
 def test_poisson_vs_scipy(params, sp_params):

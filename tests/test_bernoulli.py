@@ -1,5 +1,6 @@
 """Test Bernoulli distribution against scipy implementation."""
 
+import numpy as np
 import pytest
 from scipy import stats
 
@@ -11,9 +12,10 @@ from tests.helper_scipy import make_params, run_distribution_tests
     "params, sp_params",
     [
         ([0.3], {"p": 0.3}),
-        ([0.5], {"p": 0.5}),
-        ([0.001], {"p": 0.001}),
-        ([0.999], {"p": 0.999}),
+        (
+            [np.array([0.5, 0.001, 0.999])],
+            {"p": np.array([0.5, 0.001, 0.999])},
+        ),
     ],
 )
 def test_bernoulli_vs_scipy(params, sp_params):

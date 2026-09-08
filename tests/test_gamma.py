@@ -1,5 +1,6 @@
 """Test Gamma distribution against scipy implementation."""
 
+import numpy as np
 import pytest
 from scipy import stats
 
@@ -11,11 +12,16 @@ from tests.helper_scipy import make_params, run_distribution_tests
     "params, sp_params",
     [
         ([2.0, 1 / 3], {"a": 2.0, "scale": 3.0}),
-        ([1.0, 1.0], {"a": 1.0, "scale": 1.0}),
-        ([0.5, 2.0], {"a": 0.5, "scale": 0.5}),
-        ([50.0, 0.5], {"a": 50.0, "scale": 2.0}),
-        ([0.01, 0.01], {"a": 0.01, "scale": 100.0}),
-        ([100.0, 100.0], {"a": 100.0, "scale": 0.01}),
+        (
+            [
+                np.array([1.0, 0.5, 50.0, 0.01, 100.0]),
+                np.array([1.0, 2.0, 0.5, 0.01, 100.0]),
+            ],
+            {
+                "a": np.array([1.0, 0.5, 50.0, 0.01, 100.0]),
+                "scale": np.array([1.0, 0.5, 2.0, 100.0, 0.01]),
+            },
+        ),
     ],
 )
 def test_gamma_vs_scipy(params, sp_params):

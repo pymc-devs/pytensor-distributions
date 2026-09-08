@@ -1,6 +1,6 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import cdf_bounds
+from pytensor_distributions.helper import logdiffexp
 from pytensor_distributions.lmoments import _lmoments
 from pytensor_distributions.optimization import find_ppf
 
@@ -57,14 +57,38 @@ def entropy(mu, lam):
     return 0.5 * pt.log((2 * pt.pi * pt.e * mu**3) / lam) + 1.5 * pt.exp(x) * gamma_term
 
 
-def cdf(x, mu, lam):
+def _wald_gini_terms(x, mu, lam):
     eps = 1e-12
     u = pt.sqrt(lam / (x + eps))
     v = x / mu
-    z1 = 0.5 * (1 + pt.erf(u * (v - 1) / pt.sqrt(2)))
-    z2 = pt.exp(2 * lam / mu) * 0.5 * (1 + pt.erf(-u * (v + 1) / pt.sqrt(2)))
-    prob = z1 + z2
-    return cdf_bounds(prob, x, 0, pt.inf)
+    sqrt2 = pt.sqrt(2)
+    return u * (v - 1) / sqrt2, u * (v + 1) / sqrt2
+
+
+def cdf(x, mu, lam):
+    return pt.exp(logcdf(x, mu, lam))
+
+
+def _log_half_erfc(w):
+    return pt.switch(
+        pt.ge(w, 0),
+        pt.log(0.5 * pt.erfcx(w)) - pt.square(w),
+        pt.log1mexp(pt.log(0.5 * pt.erfcx(-w)) - pt.square(w)),
+    )
+
+
+def logcdf(x, mu, lam):
+    w1, w2 = _wald_gini_terms(x, mu, lam)
+    log_z1 = _log_half_erfc(-w1)
+    log_z2 = 2 * lam / mu + _log_half_erfc(w2)
+    result = pt.maximum(log_z1, log_z2) + pt.log1pexp(
+        pt.minimum(log_z1, log_z2) - pt.maximum(log_z1, log_z2)
+    )
+    return pt.switch(
+        pt.le(x, 0),
+        -pt.inf,
+        pt.switch(pt.eq(x, pt.inf), 0.0, result),
+    )
 
 
 def isf(x, mu, lam):
@@ -88,10 +112,6 @@ def rvs(mu, lam, size=None, random_state=None):
     return pt.random.wald(mu, lam, rng=random_state, size=size, return_next_rng=True)[1]
 
 
-def logcdf(x, mu, lam):
-    return pt.log(cdf(x, mu, lam))
-
-
 def logpdf(x, mu, lam):
     return pt.switch(
         pt.or_(pt.le(x, 0), pt.eq(x, pt.inf)),
@@ -101,4 +121,13 @@ def logpdf(x, mu, lam):
 
 
 def logsf(x, mu, lam):
-    return pt.log1p(-cdf(x, mu, lam))
+    w1, w2 = _wald_gini_terms(x, mu, lam)
+    log_a = _log_half_erfc(w1)
+    log_b = 2 * lam / mu + _log_half_erfc(w2)
+    result = logdiffexp(log_a, log_b)
+    result = pt.switch(pt.isnan(result), -pt.inf, result)
+    return pt.switch(
+        pt.le(x, 0),
+        0.0,
+        pt.switch(pt.eq(x, pt.inf), -pt.inf, result),
+    )

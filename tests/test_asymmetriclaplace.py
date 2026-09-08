@@ -1,5 +1,6 @@
 """Test AsymmetricLaplace distribution against scipy implementation."""
 
+import numpy as np
 import pytest
 from scipy import stats
 
@@ -11,9 +12,18 @@ from tests.helper_scipy import make_params, run_distribution_tests
     "params, sp_params",
     [
         ([0.0, 1.0, 1.0], {"loc": 0.0, "scale": 1.0, "kappa": 1.0}),
-        ([-1.0, 2.0, 2.0], {"loc": -1.0, "scale": 2.0, "kappa": 2.0}),
-        ([0.0, 1.0, 0.01], {"loc": 0.0, "scale": 1.0, "kappa": 0.01}),
-        ([5.0, 0.1, 100.0], {"loc": 5.0, "scale": 0.1, "kappa": 100.0}),
+        (
+            [
+                np.array([-1, 0, 5.0]),
+                np.array([2, 1.0, 0.1]),
+                np.array([2, 0.01, 100]),
+            ],
+            {
+                "loc": np.array([-1, 0, 5.0]),
+                "scale": np.array([2, 1.0, 0.1]),
+                "kappa": np.array([2, 0.01, 100]),
+            },
+        ),
     ],
 )
 def test_asymmetriclaplace_vs_scipy(params, sp_params):

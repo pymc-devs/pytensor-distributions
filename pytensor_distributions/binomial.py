@@ -69,7 +69,7 @@ def ppf(q, n, p):
 
 
 def sf(x, n, p):
-    return 1.0 - cdf(x, n, p)
+    return pt.exp(logsf(x, n, p))
 
 
 def isf(q, n, p):
@@ -105,4 +105,8 @@ def logcdf(x, n, p):
 
 
 def logsf(x, n, p):
-    return pt.log1p(-cdf(x, n, p))
+    return pt.switch(
+        pt.lt(x, 0),
+        0.0,
+        pt.switch(pt.ge(x, n), -pt.inf, pt.log(pt.betainc(x + 1, n - x, p))),
+    )

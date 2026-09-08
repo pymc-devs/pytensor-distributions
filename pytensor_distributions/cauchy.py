@@ -86,7 +86,12 @@ def rvs(alpha, beta, size=None, random_state=None):
 
 
 def logcdf(x, alpha, beta):
-    return pt.log(pt.clip(cdf(x, alpha, beta), 0, 1))
+    z = (x - alpha) / beta
+    return pt.switch(
+        pt.lt(z, 0),
+        pt.log(pt.arctan2(1, -z) / pt.pi),
+        pt.log1p(-pt.arctan2(1, z) / pt.pi),
+    )
 
 
 def logpdf(x, alpha, beta):
@@ -94,5 +99,9 @@ def logpdf(x, alpha, beta):
 
 
 def logsf(x, alpha, beta):
-    sf_val = 0.5 - (1 / pt.pi) * pt.arctan((x - alpha) / beta)
-    return pt.log(pt.clip(sf_val, 0, 1))
+    z = (x - alpha) / beta
+    return pt.switch(
+        pt.gt(z, 0),
+        pt.log(pt.arctan2(1, z) / pt.pi),
+        pt.log1p(-pt.arctan2(1, -z) / pt.pi),
+    )

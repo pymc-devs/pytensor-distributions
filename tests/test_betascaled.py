@@ -1,5 +1,6 @@
 """Test BetaScaled distribution against scipy implementation."""
 
+import numpy as np
 import pytest
 from scipy import stats
 
@@ -11,14 +12,26 @@ from tests.helper_scipy import make_params, run_distribution_tests, run_lmoments
     "params, sp_params",
     [
         ([2.0, 5.0, -1.0, 3.0], {"a": 2, "b": 5, "loc": -1, "scale": 4}),
-        ([15.0, 3.0, 0.0, 10.0], {"a": 15.0, "b": 3.0, "loc": 0.0, "scale": 10.0}),
-        ([20.0, 20.0, -100.0, 50.0], {"a": 20.0, "b": 20.0, "loc": -100.0, "scale": 150.0}),
+        (
+            [
+                np.array([15.0, 20.0, 2.0]),
+                np.array([3.0, 20.0, 5.0]),
+                np.array([0.0, -100.0, -1.0]),
+                np.array([10.0, 50.0, 3.0]),
+            ],
+            {
+                "a": np.array([15.0, 20.0, 2.0]),
+                "b": np.array([3.0, 20.0, 5.0]),
+                "loc": np.array([0.0, -100.0, -1.0]),
+                "scale": np.array([10.0, 150.0, 4.0]),
+            },
+        ),
     ],
 )
 def test_betascaled_vs_scipy(params, sp_params):
     """Test BetaScaled distribution against scipy.stats.beta."""
     p_params = make_params(*params, dtype="float64")
-    lower, upper = params[2], params[3]
+    lower, upper = np.min(params[2]), np.max(params[3])
     support = (lower, upper)
 
     run_distribution_tests(

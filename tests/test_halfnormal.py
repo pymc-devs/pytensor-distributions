@@ -1,5 +1,6 @@
 """Test HalfNormal distribution against scipy implementation."""
 
+import numpy as np
 import pytest
 from scipy import stats
 
@@ -11,8 +12,7 @@ from tests.helper_scipy import make_params, run_distribution_tests
     "params, sp_params",
     [
         ([3.5], {"loc": 0, "scale": 3.5}),
-        ([1e-6], {"loc": 0, "scale": 1e-6}),
-        ([1e6], {"loc": 0, "scale": 1e6}),
+        ([np.array([1e-6, 1e6])], {"loc": 0, "scale": np.array([1e-6, 1e6])}),
     ],
 )
 def test_halfnormal_vs_scipy(params, sp_params):

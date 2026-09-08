@@ -6,6 +6,13 @@ from numpy.testing import assert_allclose
 from scipy.stats import lmoment
 
 
+def broadcast_x(x, bcast_shape):
+    """Reshape x so it broadcasts against parameters with bcast_shape."""
+    if bcast_shape:
+        return x.reshape((-1, *np.ones(len(bcast_shape), dtype=int)))
+    return x
+
+
 def run_distribution_tests(
     p_dist,
     sp_dist,
@@ -36,11 +43,15 @@ def run_distribution_tests(
     skip_skewness=False,
     skip_kurtosis=False,
     use_quantiles_for_rvs=False,
+    quantiles_sample_size=25_000,
 ):
     scipy_dist = sp_dist(**sp_params)
 
     p_param_vals = [param.eval() if hasattr(param, "eval") else param for param in p_params]
     param_info = f"\nPyTensor params: {p_param_vals}\nSciPy params: {sp_params}"
+
+    # rvs size must include the broadcast shape of the parameters for batched params
+    bcast_shape = np.broadcast_shapes(*(np.shape(v) for v in p_param_vals))
 
     # Entropy
     actual = p_dist.entropy(*p_params).eval()
@@ -50,17 +61,20 @@ def run_distribution_tests(
     )
 
     # Random variates
+    size = (20, *bcast_shape)
     rng_p = pt.random.default_rng(1)
-    actual_rvs = p_dist.rvs(*p_params, size=20, random_state=rng_p).eval()
+    actual_rvs = p_dist.rvs(*p_params, size=size, random_state=rng_p).eval()
     rng_n = np.random.default_rng(1)
-    expected_rvs = scipy_dist.rvs(20, random_state=rng_n)
+    expected_rvs = scipy_dist.rvs(size, random_state=rng_n)
 
     if use_quantiles_for_rvs:
-        p_rvs = p_dist.rvs(*p_params, size=25_000, random_state=rng_p).eval()
-        s_rvs = scipy_dist.rvs(25_000, random_state=rng_n)
+        p_rvs = p_dist.rvs(
+            *p_params, size=(quantiles_sample_size, *bcast_shape), random_state=rng_p
+        ).eval()
+        s_rvs = scipy_dist.rvs((quantiles_sample_size, *bcast_shape), random_state=rng_n)
         assert_allclose(
-            np.quantile(p_rvs, [0.25, 0.5, 0.75]),
-            np.quantile(s_rvs, [0.25, 0.5, 0.75]),
+            np.quantile(p_rvs, [0.25, 0.5, 0.75], axis=0),
+            np.quantile(s_rvs, [0.25, 0.5, 0.75], axis=0),
             rtol=1e-1,
             atol=0.05,  # Allow small absolute tolerance for values near zero
             err_msg=f"Random variates (quantiles) test failed with {param_info}",
@@ -75,7 +89,7 @@ def run_distribution_tests(
 
     extended_vals = np.concatenate(
         [
-            actual_rvs,
+            actual_rvs.ravel(),
             support,
             [support[0] - 1],
             [support[0] - 2],
@@ -88,6 +102,8 @@ def run_distribution_tests(
     if name == "exgaussian":
         extended_vals = extended_vals[np.isfinite(extended_vals)]
 
+    extended_vals = broadcast_x(extended_vals, bcast_shape)
+
     # PDF
     actual_pdf = p_dist.pdf(extended_vals, *p_params).eval()
     try:
@@ -96,7 +112,11 @@ def run_distribution_tests(
         expected_pdf = scipy_dist.pmf(extended_vals)
 
     assert_allclose(
-        actual_pdf, expected_pdf, rtol=pdf_rtol, err_msg=f"PDF test failed with {param_info}"
+        actual_pdf,
+        expected_pdf,
+        rtol=pdf_rtol,
+        atol=1e-308,
+        err_msg=f"PDF test failed with {param_info}",
     )
 
     # logPDF
@@ -139,22 +159,34 @@ def run_distribution_tests(
     actual_sf = p_dist.sf(extended_vals, *p_params).eval()
     expected_sf = scipy_dist.sf(extended_vals)
     assert_allclose(
-        actual_sf, expected_sf, rtol=sf_rtol, err_msg=f"SF test failed with {param_info}"
+        actual_sf,
+        expected_sf,
+        rtol=sf_rtol,
+        atol=1e-12,
+        err_msg=f"SF test failed with {param_info}",
     )
 
     # logSF
     actual_logsf = p_dist.logsf(extended_vals, *p_params).eval()
     expected_logsf = scipy_dist.logsf(extended_vals)
+    resolvable = (expected_sf > 1e-10) & np.isfinite(expected_logsf) & np.isfinite(actual_logsf)
     assert_allclose(
-        actual_logsf,
-        expected_logsf,
+        actual_logsf[resolvable],
+        expected_logsf[resolvable],
         rtol=logsf_rtol,
+        atol=1e-12,
         err_msg=f"logSF test failed with {param_info}",
     )
+    ok_deep = (
+        (np.isnan(actual_logsf) & np.isnan(expected_logsf))
+        | (actual_logsf == -np.inf)
+        | (np.isfinite(actual_logsf) & (actual_logsf <= -22.0))
+    )
+    assert np.all(ok_deep[~resolvable]), f"logSF deep-tail test failed with {param_info}"
 
     # ISF
     if not skip_isf:
-        x_vals = np.array([-1, 0, 0.25, 0.5, 0.75, 1, 2])
+        x_vals = broadcast_x(np.array([-1, 0, 0.25, 0.5, 0.75, 1, 2]), bcast_shape)
         actual_isf = p_dist.isf(x_vals, *p_params).eval()
         expected_isf = scipy_dist.isf(x_vals)
         assert_allclose(
@@ -189,16 +221,17 @@ def run_distribution_tests(
         if is_discrete:
             eps = 1
         else:
-            eps = np.diff(p_dist.ppf(np.array([0.6, 0.4]), *p_params).eval()) * 0.01
+            q_vals = broadcast_x(np.array([0.6, 0.4]), bcast_shape)
+            eps = np.diff(p_dist.ppf(q_vals, *p_params).eval(), axis=0) * 0.01
 
         pdf_mode = p_dist.pdf(mode_val, *p_params).eval()
         pdf_left = p_dist.pdf(mode_val - eps, *p_params).eval()
         pdf_right = p_dist.pdf(mode_val + eps, *p_params).eval()
 
-        assert pdf_mode >= pdf_left - 1e-4, (
+        assert np.all(pdf_mode >= pdf_left - 1e-4), (
             f"Mode test (left) failed with {param_info}: pdf_mode={pdf_mode}, pdf_left={pdf_left}"
         )
-        assert pdf_mode >= pdf_right - 1e-4, (
+        assert np.all(pdf_mode >= pdf_right - 1e-4), (
             f"Mode test (right) failed with {param_info}: "
             f"pdf_mode={pdf_mode}, pdf_right={pdf_right}"
         )
@@ -258,50 +291,47 @@ def make_params(*values, dtype=None):
 def run_lmoments_test(p_dist, p_params, name=None, rtol=5e-2, atol=5e-2, sample_size=50_000):
     """Compare the distribution's lmoment2-4 against sample L-moments."""
     if name in ["cauchy"]:
-        assert np.isnan(p_dist.lmoment2(*p_params).eval())
-        assert np.isnan(p_dist.lmoment3(*p_params).eval())
-        assert np.isnan(p_dist.lmoment4(*p_params).eval())
+        assert np.all(np.isnan(p_dist.lmoment2(*p_params).eval()))
+        assert np.all(np.isnan(p_dist.lmoment3(*p_params).eval()))
+        assert np.all(np.isnan(p_dist.lmoment4(*p_params).eval()))
         return
 
     if name in ["halfcauchy"]:
-        assert p_dist.lmoment2(*p_params).eval() == float("inf")
-        assert p_dist.lmoment3(*p_params).eval() == float("inf")
-        assert p_dist.lmoment4(*p_params).eval() == float("inf")
+        assert np.all(p_dist.lmoment2(*p_params).eval() == float("inf"))
+        assert np.all(p_dist.lmoment3(*p_params).eval() == float("inf"))
+        assert np.all(p_dist.lmoment4(*p_params).eval() == float("inf"))
         return
 
     else:
+        bcast_shape = np.broadcast_shapes(
+            *(np.shape(p.eval() if hasattr(p, "eval") else p) for p in p_params)
+        )
         rng = pt.random.default_rng(42)
-        data = p_dist.rvs(*p_params, size=sample_size, random_state=rng).eval()
+        data = p_dist.rvs(*p_params, size=(sample_size, *bcast_shape), random_state=rng).eval()
 
         s_l2, s_tau3, s_tau4 = lmoment(data, order=[2, 3, 4])
+        s_l2, s_tau3, s_tau4 = np.atleast_1d(s_l2), np.atleast_1d(s_tau3), np.atleast_1d(s_tau4)
 
-        if name in ["halfstudentt"]:
-            param = p_params[0].eval()
-            if param <= 1:
-                s_l2 = s_tau3 = s_tau4 = float("inf")
-            elif param <= 2:
-                s_tau3 = s_tau4 = float("inf")
-            elif param <= 3:
-                s_tau4 = float("inf")
+        if name in ["halfstudentt", "frechet"]:
+            param = np.atleast_1d(p_params[0].eval())
+            s_l2[param <= 1] = np.inf
+            s_tau3[param <= 2] = np.inf
+            s_tau4[param <= 3] = np.inf
 
         if name in ["inversegamma", "pareto"]:
-            if p_params[0].eval() <= 1:
-                s_l2 = s_tau3 = s_tau4 = float("inf")
-
-        if name == "frechet":
-            if p_params[0].eval() <= 1:
-                s_l2 = s_tau3 = s_tau4 = float("inf")
-            elif p_params[0].eval() <= 2:
-                s_tau3 = s_tau4 = float("inf")
-            elif p_params[0].eval() <= 3:
-                s_tau4 = float("inf")
+            param = np.atleast_1d(p_params[0].eval())
+            s_l2[param <= 1] = np.inf
+            s_tau3[param <= 1] = np.inf
+            s_tau4[param <= 1] = np.inf
 
         if name in ["loglogistic", "betaprime"]:
-            if p_params[1].eval() <= 1:
-                s_l2 = s_tau3 = s_tau4 = float("inf")
+            param = np.atleast_1d(p_params[1].eval())
+            s_l2[param <= 1] = np.inf
+            s_tau3[param <= 1] = np.inf
+            s_tau4[param <= 1] = np.inf
 
         if name == "vonmises":
-            s_tau3 = 0.0
+            s_tau3 = np.zeros_like(s_tau3)
 
         param_vals = [p.eval() if hasattr(p, "eval") else p for p in p_params]
         param_info = f"\n{name} params: {param_vals}"

@@ -56,10 +56,15 @@ def cdf(x, beta):
 
 
 def logcdf(x, beta):
+    z = x / beta
     return pt.switch(
         pt.lt(x, 0),
         -pt.inf,
-        pt.log(2 * pt.arctan(x / beta) / pt.pi),
+        pt.switch(
+            pt.lt(z, 1),
+            pt.log(2 * pt.arctan(z) / pt.pi),
+            pt.log1p(-2 * pt.arctan2(1, z) / pt.pi),
+        ),
     )
 
 
@@ -92,4 +97,9 @@ def logpdf(x, beta):
 
 
 def logsf(x, beta):
-    return pt.log1mexp(logcdf(x, beta))
+    z = x / beta
+    return pt.switch(
+        pt.lt(x, 0),
+        0.0,
+        pt.log(2 * pt.arctan2(1, z) / pt.pi),
+    )

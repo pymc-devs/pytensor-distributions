@@ -1,5 +1,6 @@
 """Test Weibull distribution against scipy implementation."""
 
+import numpy as np
 import pytest
 from scipy import stats
 
@@ -11,9 +12,17 @@ from tests.helper_scipy import make_params, run_distribution_tests
     "params, sp_params, skip_mode",
     [
         ([2.0, 5.0], {"c": 2.0, "scale": 5.0}, False),
-        ([0.5, 3.0], {"c": 0.5, "scale": 3.0}, False),
-        ([1.0, 1.0], {"c": 1.0, "scale": 1.0}, False),
-        ([100.0, 2.0], {"c": 100.0, "scale": 2.0}, False),
+        (
+            [
+                np.array([0.5, 1.0, 100.0]),
+                np.array([3.0, 1.0, 2.0]),
+            ],
+            {
+                "c": np.array([0.5, 1.0, 100.0]),
+                "scale": np.array([3.0, 1.0, 2.0]),
+            },
+            False,
+        ),
     ],
 )
 def test_weibull_vs_scipy(params, sp_params, skip_mode):

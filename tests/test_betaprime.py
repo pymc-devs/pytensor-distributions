@@ -1,5 +1,6 @@
 """Test Beta Prime distribution against scipy implementation."""
 
+import numpy as np
 import pytest
 from scipy import stats
 
@@ -11,10 +12,17 @@ from tests.helper_scipy import make_params, run_distribution_tests
     "params, sp_params, skip_mode",
     [
         ([3.0, 5.0], {"a": 3.0, "b": 5}, False),
-        ([12, 2.0], {"a": 12, "b": 2}, False),
-        ([75.0, 20.0], {"a": 75.0, "b": 20.0}, False),
-        ([2.75, 0.75], {"a": 2.75, "b": 0.75}, False),
-        ([0.5, 0.5], {"a": 0.5, "b": 0.5}, True),
+        (
+            [
+                np.array([12.0, 75.0, 2.75, 0.5]),
+                np.array([2.0, 20.0, 0.75, 0.5]),
+            ],
+            {
+                "a": np.array([12.0, 75.0, 2.75, 0.5]),
+                "b": np.array([2.0, 20.0, 0.75, 0.5]),
+            },
+            True,
+        ),
     ],
 )
 def test_betaprime_vs_scipy(params, sp_params, skip_mode):

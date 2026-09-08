@@ -84,7 +84,7 @@ def rvs(lam, size=None, random_state=None):
 
 
 def logcdf(x, lam):
-    return pt.switch(pt.lt(x, 0.0), -pt.inf, pt.log1p(-pt.exp(-lam * x)))
+    return pt.switch(pt.lt(x, 0.0), -pt.inf, pt.log(-pt.expm1(-lam * x)))
 
 
 def logpdf(x, lam):

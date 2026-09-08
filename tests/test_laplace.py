@@ -1,5 +1,6 @@
 """Test Laplace distribution against scipy implementation."""
 
+import numpy as np
 import pytest
 from scipy import stats
 
@@ -14,6 +15,16 @@ from tests.helper_scipy import make_params, run_distribution_tests
         ([-5.0, 0.5], {"loc": -5.0, "scale": 0.5}),
         ([10.0, 2.0], {"loc": 10.0, "scale": 2.0}),
         ([1.0, 1e-6], {"loc": 1.0, "scale": 1e-6}),
+        (
+            [
+                np.array([0.0, -5.0]),
+                np.array([1.0, 0.5]),
+            ],
+            {
+                "loc": np.array([0.0, -5.0]),
+                "scale": np.array([1.0, 0.5]),
+            },
+        ),
     ],
 )
 def test_laplace_vs_scipy(params, sp_params):
