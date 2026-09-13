@@ -40,25 +40,25 @@ def rvs(K, eta, size=None, random_state=None):
 
     # Initialize the correlation matrix for K = 2
     beta_param = eta + (K - 2) / 2
-    rng, u = pt.random.beta(beta_param, beta_param,
-                            size=batch_shape, rng=random_state, return_next_rng=True)
+    rng, u = pt.random.beta(
+        beta_param, beta_param, size=batch_shape, rng=random_state, return_next_rng=True
+    )
     r_val = 2.0 * u - 1.0
     ones = pt.ones(batch_shape)
-    R = pt.stack([
-        pt.stack([ones, r_val], axis=-1),
-        pt.stack([r_val, ones], axis=-1)
-    ], axis=-2)
+    R = pt.stack([pt.stack([ones, r_val], axis=-1), pt.stack([r_val, ones], axis=-1)], axis=-2)
 
     for m in range(2, K):
         beta_param = beta_param - 0.5
         # Sample the beta radius
-        rng, r_sq = pt.random.beta(m / 2, beta_param,
-                                   size=batch_shape, rng=rng, return_next_rng=True)
+        rng, r_sq = pt.random.beta(
+            m / 2, beta_param, size=batch_shape, rng=rng, return_next_rng=True
+        )
         r = pt.sqrt(r_sq)
 
         # Sample a random point, uniformly distributed on the unit sphere
-        rng, raw_normal = pt.random.normal(0, 1,
-                                           size=batch_shape + (m,), rng=rng, return_next_rng=True)
+        rng, raw_normal = pt.random.normal(
+            0, 1, size=batch_shape + (m,), rng=rng, return_next_rng=True
+        )
         sphere_direction = raw_normal / pt.linalg.norm(raw_normal, ord=2, axis=-1, keepdims=True)
         # Create Target vector
         z = r[..., None] * sphere_direction
@@ -67,9 +67,12 @@ def rvs(K, eta, size=None, random_state=None):
         L = pt.linalg.cholesky(R)
         y = pt.einsum("...ij,...j->...i", L, z)
 
-        R = pt.concatenate([
-            pt.concatenate([R, y[..., None]], axis=-1),
-            pt.concatenate([y[..., None, :], pt.ones(batch_shape + (1, 1))], axis=-1)
-        ], axis=-2)
+        R = pt.concatenate(
+            [
+                pt.concatenate([R, y[..., None]], axis=-1),
+                pt.concatenate([y[..., None, :], pt.ones(batch_shape + (1, 1))], axis=-1),
+            ],
+            axis=-2,
+        )
 
     return R
