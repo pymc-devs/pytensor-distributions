@@ -31,6 +31,15 @@ def test_lkj_pdf_k2(K, eta, r):
     assert_allclose(actual, expected, rtol=1e-3)
 
 
+# Test for K=2
+@pytest.mark.parametrize("eta", [0.5, 1.0, 1.3, 2.0, 5.0])
+def test_lkj_entropy_k2(eta):
+    p_eta = pt.constant(eta)
+    actual = LKJ.entropy(2, p_eta).eval()
+    expected = stats.beta(eta, eta).entropy() + np.log(2)
+    assert_allclose(actual, expected, rtol=1e-3)
+
+
 @pytest.mark.parametrize("K, eta", TEST_CASES)
 def test_lkj_mean(K, eta):
     actual = LKJ.mean(K, pt.constant(eta)).eval()

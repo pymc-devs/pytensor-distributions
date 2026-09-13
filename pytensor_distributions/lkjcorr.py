@@ -15,6 +15,17 @@ def pdf(C, K, eta):
     return pt.exp(logpdf(C, K, eta))
 
 
+def entropy(K, eta):
+    k = pt.arange(1, K)
+    dk = K - k
+    beta_k = eta + (dk - 1) / 2.0
+    A = pt.sum((2.0 * (eta - 1.0) + dk) * dk) * pt.log(2.0) + pt.sum(
+        dk * pt.special.betaln(beta_k, beta_k)
+    )
+    expected_logdet = pt.sum(dk * (pt.log(4.0) + 2.0 * (pt.psi(beta_k) - pt.psi(2.0 * beta_k))))
+    return A - (eta - 1.0) * expected_logdet
+
+
 def mean(K, eta):
     return pt.eye(K)
 
