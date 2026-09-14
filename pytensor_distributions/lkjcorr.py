@@ -58,41 +58,25 @@ def rvs(K, eta, size=None, random_state=None):
     if K == 1:
         return pt.ones(batch_shape + (1, 1))
 
-    # Initialize the correlation matrix for K = 2
-    beta_param = eta + (K - 2) / 2
-    rng, u = pt.random.beta(
-        beta_param, beta_param, size=batch_shape, rng=random_state, return_next_rng=True
+    # Initialize for K = 2
+    beta = eta - 1.0 + K / 2.0
+    rng, y = pt.random.beta(
+        beta, beta, size=batch_shape, rng=random_state, return_next_rng=True
     )
-    r_val = 2.0 * u - 1.0
-    ones = pt.ones(batch_shape)
-    R = pt.stack([pt.stack([ones, r_val], axis=-1), pt.stack([r_val, ones], axis=-1)], axis=-2)
-
+    r = 2.0 * y - 1.0
+    F = pt.full((*batch_shape, K, K), pt.eye(K))
+    F = pt.set_subtensor(F[..., 0, 1], r)
+    F = pt.set_subtensor(F[..., 1, 1], pt.sqrt(1.0 - r**2))
     for m in range(2, K):
-        beta_param = beta_param - 0.5
-        # Sample the beta radius
-        rng, r_sq = pt.random.beta(
-            m / 2, beta_param, size=batch_shape, rng=rng, return_next_rng=True
+        beta = beta - 0.5
+        rng, y = pt.random.beta(
+            m / 2.0, beta, size=batch_shape, rng=rng, return_next_rng=True
         )
-        r = pt.sqrt(r_sq)
-
-        # Sample a random point, uniformly distributed on the unit sphere
-        rng, raw_normal = pt.random.normal(
+        rng, z = pt.random.normal(
             0, 1, size=batch_shape + (m,), rng=rng, return_next_rng=True
         )
-        sphere_direction = raw_normal / pt.linalg.norm(raw_normal, ord=2, axis=-1, keepdims=True)
-        # Create Target vector
-        z = r[..., None] * sphere_direction
-
-        # Transform z based on the cholesky factor
-        L = pt.linalg.cholesky(R)
-        y = pt.einsum("...ij,...j->...i", L, z)
-
-        R = pt.concatenate(
-            [
-                pt.concatenate([R, y[..., None]], axis=-1),
-                pt.concatenate([y[..., None, :], pt.ones(batch_shape + (1, 1))], axis=-1),
-            ],
-            axis=-2,
-        )
-
-    return R
+        z = z / pt.sqrt(pt.sum(z**2, axis=-1, keepdims=True))
+        F = pt.set_subtensor(F[..., :m, m], pt.sqrt(y)[..., None] * z)
+        F = pt.set_subtensor(F[..., m, m], pt.sqrt(1.0 - y))
+    # Construct the correlation matrix from the factor
+    return F.mT @ F
