@@ -30,6 +30,15 @@ def mean(K, eta):
     return pt.eye(K)
 
 
+def median(K, eta):
+    return pt.eye(K)
+
+
+def mode(K, eta):
+    alpha = eta - 1 + K / 2
+    return pt.where(alpha > 1, pt.eye(K), pt.full((K, K), pt.nan))
+
+
 def var(K, eta):
     return 1.0 / (2 * eta + K - 1)
 
