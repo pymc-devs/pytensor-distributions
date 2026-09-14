@@ -60,21 +60,15 @@ def rvs(K, eta, size=None, random_state=None):
 
     # Initialize for K = 2
     beta = eta - 1.0 + K / 2.0
-    rng, y = pt.random.beta(
-        beta, beta, size=batch_shape, rng=random_state, return_next_rng=True
-    )
+    rng, y = pt.random.beta(beta, beta, size=batch_shape, rng=random_state, return_next_rng=True)
     r = 2.0 * y - 1.0
     F = pt.full((*batch_shape, K, K), pt.eye(K))
     F = pt.set_subtensor(F[..., 0, 1], r)
     F = pt.set_subtensor(F[..., 1, 1], pt.sqrt(1.0 - r**2))
     for m in range(2, K):
         beta = beta - 0.5
-        rng, y = pt.random.beta(
-            m / 2.0, beta, size=batch_shape, rng=rng, return_next_rng=True
-        )
-        rng, z = pt.random.normal(
-            0, 1, size=batch_shape + (m,), rng=rng, return_next_rng=True
-        )
+        rng, y = pt.random.beta(m / 2.0, beta, size=batch_shape, rng=rng, return_next_rng=True)
+        rng, z = pt.random.normal(0, 1, size=batch_shape + (m,), rng=rng, return_next_rng=True)
         z = z / pt.sqrt(pt.sum(z**2, axis=-1, keepdims=True))
         F = pt.set_subtensor(F[..., :m, m], pt.sqrt(y)[..., None] * z)
         F = pt.set_subtensor(F[..., m, m], pt.sqrt(1.0 - y))
