@@ -2,7 +2,12 @@ import pytensor.tensor as pt
 from pytensor.tensor.math import betaincinv
 from pytensor.tensor.special import betaln
 
-from pytensor_distributions.helper import continuous_entropy, continuous_mode, ppf_bounds_cont
+from pytensor_distributions.helper import (
+    continuous_entropy,
+    continuous_mode,
+    isf_bounds_cont,
+    ppf_bounds_cont,
+)
 from pytensor_distributions.lmoments import _lmoments
 
 
@@ -154,12 +159,21 @@ def logcdf(x, a, b, mu, sigma):
 
 
 def sf(x, a, b, mu, sigma):
-    # uses symmetry: sf(x; a, b) = cdf(-x; b, a)
-    return cdf(-x, b, a, -mu, sigma)
+    z = (x - mu) / sigma
+    y = 0.5 * (1 + z / pt.sqrt(a + b + z**2))
+    result = 1.0 - pt.betainc(a, b, y)
+    result = pt.switch(pt.eq(x, -pt.inf), 1.0, result)
+    result = pt.switch(pt.eq(x, pt.inf), 0.0, result)
+    return result
 
 
 def logsf(x, a, b, mu, sigma):
-    return logcdf(-x, b, a, -mu, sigma)
+    z = (x - mu) / sigma
+    y = 0.5 * (1 + z / pt.sqrt(a + b + z**2))
+    result = pt.log1p(-pt.betainc(a, b, y))
+    result = pt.switch(pt.eq(x, -pt.inf), 0.0, result)
+    result = pt.switch(pt.eq(x, pt.inf), -pt.inf, result)
+    return result
 
 
 def ppf(q, a, b, mu, sigma):
@@ -173,7 +187,13 @@ def ppf(q, a, b, mu, sigma):
 
 
 def isf(q, a, b, mu, sigma):
-    return ppf(1 - q, a, b, mu, sigma)
+    a_b, b_b, mu_b, sigma_b = pt.broadcast_arrays(a, b, mu, sigma)
+    bval = betaincinv(b_b, a_b, q)
+    num = (2 * bval - 1) * pt.sqrt(a_b + b_b)
+    denom = 2 * pt.sqrt(bval * (1 - bval))
+    z = num / denom
+    result = mu_b - sigma_b * z
+    return isf_bounds_cont(result, q, -pt.inf, pt.inf)
 
 
 def rvs(a, b, mu, sigma, size=None, random_state=None):

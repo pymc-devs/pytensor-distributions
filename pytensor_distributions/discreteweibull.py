@@ -42,7 +42,7 @@ def kurtosis(q, beta):
 def entropy(q, beta):
     # discrete Weibull can have very heavy tails, so we limit the upper bound
     # we may want to find a better way to handle this
-    upper = pt.min([ppf(0.9999, q, beta), 1e4])
+    upper = pt.minimum(ppf(0.9999, q, beta), 1e4)
     return discrete_entropy(0, upper, logpdf, q, beta)
 
 

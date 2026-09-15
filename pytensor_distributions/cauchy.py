@@ -1,6 +1,6 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import ppf_bounds_cont
+from pytensor_distributions.helper import isf_bounds_cont, ppf_bounds_cont
 
 
 def mean(alpha, beta):
@@ -66,7 +66,7 @@ def cdf(x, alpha, beta):
 
 
 def isf(x, alpha, beta):
-    return ppf(1 - x, alpha, beta)
+    return isf_bounds_cont(alpha - beta * pt.tan(pt.pi * (x - 0.5)), x, -pt.inf, pt.inf)
 
 
 def pdf(x, alpha, beta):

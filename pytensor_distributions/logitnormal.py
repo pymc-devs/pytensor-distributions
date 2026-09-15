@@ -3,9 +3,11 @@ import pytensor.tensor as pt
 
 from pytensor_distributions.helper import (
     cdf_bounds,
+    isf_bounds_cont,
     ppf_bounds_cont,
 )
 from pytensor_distributions.lmoments import _lmoments
+from pytensor_distributions.normal import isf as normal_isf
 from pytensor_distributions.normal import ppf as normal_ppf
 
 
@@ -200,7 +202,7 @@ def ppf(q, mu, sigma):
 
 
 def isf(q, mu, sigma):
-    return ppf(1 - q, mu, sigma)
+    return isf_bounds_cont(pt.sigmoid(normal_isf(q, mu, sigma)), q, 0, 1)
 
 
 def rvs(mu, sigma, size=None, random_state=None):

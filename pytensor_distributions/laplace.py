@@ -106,4 +106,13 @@ def logcdf(x, mu, b):
 
 
 def logsf(x, mu, b):
-    return logcdf(-x, -mu, b)
+    y = (x - mu) / b
+    return pt.switch(
+        pt.le(y, 0),
+        pt.switch(
+            pt.lt(y, -1),
+            pt.log1p(-0.5 * pt.exp(y)),
+            pt.log(1 - 0.5 * pt.exp(y)),
+        ),
+        pt.log(0.5) - y,
+    )

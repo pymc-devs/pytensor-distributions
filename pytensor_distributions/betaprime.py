@@ -2,7 +2,7 @@ import pytensor.tensor as pt
 from pytensor.tensor.math import betaincinv
 from pytensor.tensor.special import betaln, xlogy
 
-from pytensor_distributions.helper import ppf_bounds_cont
+from pytensor_distributions.helper import isf_bounds_cont, ppf_bounds_cont
 from pytensor_distributions.lmoments import _lmoments
 
 
@@ -81,7 +81,8 @@ def cdf(x, alpha, beta):
 
 
 def isf(x, alpha, beta):
-    return ppf(1 - x, alpha, beta)
+    z = betaincinv(beta, alpha, x)
+    return isf_bounds_cont((1 - z) / z, x, 0.0, pt.inf)
 
 
 def pdf(x, alpha, beta):

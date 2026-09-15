@@ -1,7 +1,7 @@
 import pytensor.tensor as pt
 from pytensor.tensor.special import xlogy
 
-from pytensor_distributions.helper import cdf_bounds, ppf_bounds_cont
+from pytensor_distributions.helper import cdf_bounds, isf_bounds_cont, ppf_bounds_cont
 from pytensor_distributions.lmoments import _lmoments
 
 
@@ -96,7 +96,8 @@ def sf(x, nu):
 
 
 def isf(x, nu):
-    return ppf(1 - x, nu)
+    vals = 2 * pt.gammainccinv(nu / 2, x)
+    return isf_bounds_cont(vals, x, 0, pt.inf)
 
 
 def logsf(x, nu):

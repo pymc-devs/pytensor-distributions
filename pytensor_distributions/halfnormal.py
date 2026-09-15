@@ -1,6 +1,6 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import ppf_bounds_cont
+from pytensor_distributions.helper import isf_bounds_cont, ppf_bounds_cont
 from pytensor_distributions.lmoments import _lmoments
 
 
@@ -62,7 +62,7 @@ def logcdf(x, sigma):
 
 
 def isf(x, sigma):
-    return ppf(1 - x, sigma)
+    return isf_bounds_cont(sigma * pt.sqrt(2) * pt.erfcinv(x), x, 0, pt.inf)
 
 
 def pdf(x, sigma):

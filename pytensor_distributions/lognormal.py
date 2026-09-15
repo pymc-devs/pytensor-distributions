@@ -1,6 +1,6 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import cdf_bounds, ppf_bounds_cont
+from pytensor_distributions.helper import cdf_bounds, isf_bounds_cont, ppf_bounds_cont
 from pytensor_distributions.lmoments import _lmoments
 
 
@@ -65,7 +65,7 @@ def cdf(x, mu, sigma):
 
 
 def isf(x, mu, sigma):
-    return ppf(1 - x, mu, sigma)
+    return isf_bounds_cont(pt.exp(mu - sigma * pt.sqrt(2) * pt.erfinv(2 * x - 1)), x, 0, pt.inf)
 
 
 def pdf(x, mu, sigma):

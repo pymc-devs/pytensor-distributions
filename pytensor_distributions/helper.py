@@ -54,6 +54,14 @@ def ppf_bounds_cont(x_val, q, lower, upper):
     )
 
 
+def isf_bounds_cont(x_val, q, lower, upper):
+    return pt.switch(
+        pt.or_(pt.lt(q, 0), pt.gt(q, 1)),
+        pt.nan,
+        pt.switch(pt.eq(q, 0), upper, pt.switch(pt.eq(q, 1), lower, x_val)),
+    )
+
+
 def ppf_bounds_disc(x_val, q, lower, upper):
     """
     Apply bounds checking for the inverse CDF of discrete distributions.
