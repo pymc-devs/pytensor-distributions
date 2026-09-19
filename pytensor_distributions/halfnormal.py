@@ -1,6 +1,6 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import isf_bounds_cont, ppf_bounds_cont
+from pytensor_distributions.helper import SQRT2, isf_bounds_cont, ppf_bounds_cont
 from pytensor_distributions.lmoments import _lmoments
 
 
@@ -13,7 +13,7 @@ def mode(sigma):
 
 
 def median(sigma):
-    return sigma * pt.sqrt(2) * pt.erfinv(0.5)
+    return sigma * SQRT2 * pt.erfinv(0.5)
 
 
 def var(sigma):
@@ -54,15 +54,15 @@ def entropy(sigma):
 
 
 def cdf(x, sigma):
-    return pt.where(pt.lt(x, 0), 0.0, pt.erf(x / (sigma * pt.sqrt(2))))
+    return pt.where(pt.lt(x, 0), 0.0, pt.erf(x / (sigma * SQRT2)))
 
 
 def logcdf(x, sigma):
-    return pt.where(pt.lt(x, 0), -pt.inf, pt.log(pt.erf(x / (sigma * pt.sqrt(2)))))
+    return pt.where(pt.lt(x, 0), -pt.inf, pt.log(pt.erf(x / (sigma * SQRT2))))
 
 
 def isf(x, sigma):
-    return isf_bounds_cont(sigma * pt.sqrt(2) * pt.erfcinv(x), x, 0, pt.inf)
+    return isf_bounds_cont(sigma * SQRT2 * pt.erfcinv(x), x, 0, pt.inf)
 
 
 def pdf(x, sigma):
@@ -70,7 +70,7 @@ def pdf(x, sigma):
 
 
 def ppf(q, sigma):
-    x_vals = sigma * pt.sqrt(2) * pt.erfinv(q)
+    x_vals = sigma * SQRT2 * pt.erfinv(q)
     return ppf_bounds_cont(x_vals, q, 0, pt.inf)
 
 

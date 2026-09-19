@@ -4,9 +4,9 @@ from pytensor.tensor.special import betaln
 
 from pytensor_distributions.helper import ppf_bounds_cont
 from pytensor_distributions.lmoments import _lmoments
-from pytensor_distributions.normal import cdf as normal_logcdf
 from pytensor_distributions.normal import entropy as normal_entropy
-from pytensor_distributions.normal import logcdf as normal_logpdf
+from pytensor_distributions.normal import logcdf as normal_logcdf
+from pytensor_distributions.normal import logpdf as normal_logpdf
 
 
 def mean(nu, mu, sigma):
@@ -120,7 +120,7 @@ def logcdf(x, nu, mu, sigma):
     z = (x - mu) / sigma
     factor = 0.5 * pt.betainc(0.5 * nu, 0.5, nu / (z**2 + nu))
     logcdf_t = pt.switch(pt.lt(z, 0), pt.log(factor), pt.log1p(-factor))
-    return pt.switch(pt.gt(nu, 1e5), normal_logcdf(z, mu, sigma), logcdf_t)
+    return pt.switch(pt.gt(nu, 1e5), normal_logcdf(x, mu, sigma), logcdf_t)
 
 
 def logpdf(x, nu, mu, sigma):

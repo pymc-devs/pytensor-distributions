@@ -69,7 +69,7 @@ def cdf(x, mu, sigma):
 
 
 def isf(x, mu, sigma):
-    return isf_bounds_cont(mu + sigma * 2**0.5 * pt.erfinv(1 - 2 * x), x, -pt.inf, pt.inf)
+    return isf_bounds_cont(mu + sigma * 2**0.5 * pt.erfcinv(2 * x), x, -pt.inf, pt.inf)
 
 
 def pdf(x, mu, sigma):
@@ -77,11 +77,11 @@ def pdf(x, mu, sigma):
 
 
 def ppf(q, mu, sigma):
-    return ppf_bounds_cont(mu + sigma * 2**0.5 * pt.erfinv(2 * q - 1), q, -pt.inf, pt.inf)
+    return ppf_bounds_cont(mu - sigma * 2**0.5 * pt.erfcinv(2 * q), q, -pt.inf, pt.inf)
 
 
 def sf(x, mu, sigma):
-    return pt.exp(logsf(x, mu, sigma))
+    return 0.5 * pt.erfc((x - mu) / (sigma * 2**0.5))
 
 
 def rvs(mu, sigma, size=None, random_state=None):
@@ -92,8 +92,8 @@ def logcdf(x, mu, sigma):
     z = (x - mu) / sigma
     return pt.switch(
         pt.lt(z, -1.0),
-        pt.log(pt.erfcx(-z / pt.sqrt(2.0)) / 2.0) - pt.sqr(z) / 2.0,
-        pt.log1p(-pt.erfc(z / pt.sqrt(2.0)) / 2.0),
+        pt.log(pt.erfcx(-z / 2**0.5) / 2.0) - pt.sqr(z) / 2.0,
+        pt.log1p(-pt.erfc(z / 2**0.5) / 2.0),
     )
 
 
@@ -105,6 +105,6 @@ def logsf(x, mu, sigma):
     z = (x - mu) / sigma
     return pt.switch(
         pt.gt(z, 1.0),
-        pt.log(pt.erfcx(z / pt.sqrt(2.0)) / 2.0) - pt.sqr(z) / 2.0,
-        pt.log1p(-pt.erfc(-z / pt.sqrt(2.0)) / 2.0),
+        pt.log(pt.erfcx(z / 2**0.5) / 2.0) - pt.sqr(z) / 2.0,
+        pt.log1p(-pt.erfc(-z / 2**0.5) / 2.0),
     )

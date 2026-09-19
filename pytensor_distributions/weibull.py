@@ -1,7 +1,7 @@
 import pytensor.tensor as pt
 from pytensor.tensor.special import gamma, xlogy
 
-from pytensor_distributions.helper import ppf_bounds_cont
+from pytensor_distributions.helper import LOG2, ppf_bounds_cont
 
 
 def mean(alpha, beta):
@@ -13,7 +13,7 @@ def mode(alpha, beta):
 
 
 def median(alpha, beta):
-    return beta * pt.log(2) ** (1 / alpha)
+    return beta * LOG2 ** (1 / alpha)
 
 
 def var(alpha, beta):

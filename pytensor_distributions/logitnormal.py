@@ -2,6 +2,7 @@ import numpy as np
 import pytensor.tensor as pt
 
 from pytensor_distributions.helper import (
+    SQRT2,
     cdf_bounds,
     isf_bounds_cont,
     ppf_bounds_cont,
@@ -49,7 +50,7 @@ def _ghq_moments(mu, sigma, order=1, mean_val=None, n_points=70):
     gh_x_bc = gh_x.reshape((-1,) + (1,) * broadcast_shape.ndim)
     gh_w_bc = gh_w.reshape((-1,) + (1,) * broadcast_shape.ndim)
 
-    z = pt.sqrt(2.0) * sigma * gh_x_bc + mu
+    z = 2**0.5 * sigma * gh_x_bc + mu
     x_vals = pt.sigmoid(z)
 
     if mean_val is not None:
@@ -124,7 +125,7 @@ def entropy(mu, sigma):
     gh_x_bc = gh_x.reshape((-1,) + (1,) * broadcast_shape.ndim)
     gh_w_bc = gh_w.reshape((-1,) + (1,) * broadcast_shape.ndim)
 
-    z = pt.sqrt(2.0) * sigma * gh_x_bc + mu
+    z = 2**0.5 * sigma * gh_x_bc + mu
     x_vals = pt.sigmoid(z)
 
     integrand = -logpdf(x_vals, mu, sigma)
@@ -153,7 +154,7 @@ def logpdf(x, mu, sigma):
 
 def cdf(x, mu, sigma):
     logit_x = _logit(x)
-    prob = 0.5 * (1 + pt.erf((logit_x - mu) / (sigma * pt.sqrt(2))))
+    prob = 0.5 * (1 + pt.erf((logit_x - mu) / (sigma * SQRT2)))
     return cdf_bounds(prob, x, 0, 1)
 
 
@@ -168,8 +169,8 @@ def logcdf(x, mu, sigma):
             0.0,
             pt.switch(
                 pt.lt(z, -1.0),
-                pt.log(pt.erfcx(-z / pt.sqrt(2.0)) / 2.0) - pt.sqr(z) / 2.0,
-                pt.log1p(-pt.erfc(z / pt.sqrt(2.0)) / 2.0),
+                pt.log(pt.erfcx(-z / 2**0.5) / 2.0) - pt.sqr(z) / 2.0,
+                pt.log1p(-pt.erfc(z / 2**0.5) / 2.0),
             ),
         ),
     )
@@ -190,8 +191,8 @@ def logsf(x, mu, sigma):
             -pt.inf,
             pt.switch(
                 pt.gt(z, 1.0),
-                pt.log(pt.erfcx(z / pt.sqrt(2.0)) / 2.0) - pt.sqr(z) / 2.0,
-                pt.log1p(-0.5 * (1 + pt.erf(z / pt.sqrt(2.0)))),
+                pt.log(pt.erfcx(z / 2**0.5) / 2.0) - pt.sqr(z) / 2.0,
+                pt.log1p(-0.5 * (1 + pt.erf(z / 2**0.5))),
             ),
         ),
     )

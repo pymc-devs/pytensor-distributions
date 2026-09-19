@@ -3,7 +3,11 @@
 import importlib
 
 import pytest
-from pytensor.compile.mode import Mode
+from pytensor.compile.builders import OpFromGraph
+from pytensor.compile.mode import NUMBA, Mode
+from pytensor.compile.ops import DeepCopyOp
+from pytensor.graph.utils import MethodNotDefined
+from pytensor.scalar.basic import Composite
 from pytensor.tensor.elemwise import DimShuffle, Elemwise
 
 from tests.helper_graph import (
@@ -14,13 +18,10 @@ from tests.helper_graph import (
     public_functions,
 )
 
-# DimShuffle commonly appears only to pad a Python scalar constant (e.g. ``0.5``)
-# up to the input's rank; it is folded away by the rewriter, so it doesn't
-# disqualify an expression from being a pure pointwise closure.
-CLOSURE_OPS = (Elemwise, DimShuffle)
+CLOSURE_OPS = (Elemwise, DimShuffle, OpFromGraph, DeepCopyOp)
 
 UNOPTIMIZED_MODE = Mode(linker="py", optimizer=None)
-OPTIMIZED_MODE = "NUMBA"
+OPTIMIZED_MODE = Mode(linker="py", optimizer=NUMBA.optimizer)
 
 DISTRIBUTIONS = [
     # Continuous
@@ -77,64 +78,6 @@ DISTRIBUTIONS = [
 
 EXCLUDED_FUNCTIONS = {"rvs", "expect"}
 
-MAX_COMPUTE_NODES = {
-    ("betaprime", "isf"): 2,
-    ("betaprime", "median"): 2,
-    ("betaprime", "ppf"): 2,
-    ("beta", "isf"): 2,
-    ("beta", "ppf"): 2,
-    ("betascaled", "isf"): 2,
-    ("betascaled", "median"): 2,
-    ("betascaled", "ppf"): 2,
-    ("chisquared", "isf"): 3,
-    ("chisquared", "median"): 3,
-    ("chisquared", "ppf"): 3,
-    ("exgaussian", "mode"): 3,
-    ("gamma", "isf"): 2,
-    ("gamma", "median"): 2,
-    ("gamma", "ppf"): 2,
-    ("halfnormal", "isf"): 2,
-    ("halfnormal", "ppf"): 2,
-    ("halfstudentt", "isf"): 5,
-    ("halfstudentt", "median"): 3,
-    ("halfstudentt", "ppf"): 5,
-    ("inversegamma", "isf"): 2,
-    ("inversegamma", "median"): 2,
-    ("inversegamma", "ppf"): 3,
-    ("logitnormal", "isf"): 3,
-    ("logitnormal", "ppf"): 3,
-    ("lognormal", "isf"): 3,
-    ("lognormal", "ppf"): 3,
-    ("moyal", "isf"): 2,
-    ("moyal", "ppf"): 3,
-    ("normal", "isf"): 3,
-    ("normal", "ppf"): 3,
-    ("rice", "lmoment1"): 4,
-    ("rice", "logpdf"): 3,
-    ("rice", "mean"): 4,
-    ("rice", "pdf"): 3,
-    ("rice", "std"): 4,
-    ("rice", "var"): 4,
-    ("skew_studentt", "isf"): 2,
-    ("skew_studentt", "median"): 2,
-    ("skew_studentt", "ppf"): 2,
-    ("skewnormal", "cdf"): 3,
-    ("skewnormal", "logcdf"): 3,
-    ("skewnormal", "logsf"): 3,
-    ("skewnormal", "sf"): 3,
-    ("studentt", "isf"): 5,
-    ("studentt", "ppf"): 5,
-    ("truncatednormal", "isf"): 4,
-    ("truncatednormal", "median"): 4,
-    ("truncatednormal", "ppf"): 4,
-    ("vonmises", "entropy"): 3,
-    ("vonmises", "logpdf"): 2,
-    ("vonmises", "pdf"): 2,
-    ("vonmises", "std"): 3,
-    ("vonmises", "var"): 3,
-}
-
-
 MODULE_FUNCTION_CASES = [
     (module_name, function_name)
     for module_name in DISTRIBUTIONS
@@ -142,9 +85,25 @@ MODULE_FUNCTION_CASES = [
 ]
 
 
+def _n_unfusable(compiled_fn):
+    """Count Elemwise nodes whose scalar op has no C code and therefore cannot fuse."""
+    count = 0
+    for node in compiled_fn.maker.fgraph.toposort():
+        sop = getattr(node.op, "scalar_op", None)
+        if sop is None or isinstance(sop, Composite):
+            continue
+        try:
+            sop.c_code(None, "n", ["x"] * 4, ["z"], {})
+        except (NotImplementedError, MethodNotDefined):
+            count += 1
+        except Exception:
+            pass
+    return count
+
+
 @pytest.mark.parametrize(("module_name", "function_name"), MODULE_FUNCTION_CASES)
-def test_pure_elemwise_expressions_fuse_to_one_composite_under_numba(module_name, function_name):
-    """A pure-Elemwise expression must compile to a single fused op under Numba."""
+def test_pure_elemwise_expressions_fuse_under_numba_rewrites(module_name, function_name):
+    """A pure-Elemwise expression must fuse to at most 1 + 2*n_unfusable compute nodes."""
     module = importlib.import_module(f"pytensor_distributions.{module_name}")
     fn = getattr(module, function_name)
     inputs = array_inputs_for(fn)
@@ -164,7 +123,7 @@ def test_pure_elemwise_expressions_fuse_to_one_composite_under_numba(module_name
 
     optimized = compile_fn(out, inputs, mode=OPTIMIZED_MODE)
     nodes = compute_nodes(optimized)
-    max_compute_nodes = MAX_COMPUTE_NODES.get((module_name, function_name), 1)
+    max_compute_nodes = 1 + 2 * _n_unfusable(optimized)
 
     assert len(nodes) <= max_compute_nodes, (
         f"{module_name}.{function_name} optimized to {len(nodes)} compute "

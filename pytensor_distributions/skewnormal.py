@@ -1,6 +1,7 @@
 import pytensor.tensor as pt
 
 from pytensor_distributions.halfnormal import entropy as halfnormal_entropy
+from pytensor_distributions.helper import SQRT2
 from pytensor_distributions.lmoments import _lmoments
 from pytensor_distributions.normal import entropy as normal_entropy
 from pytensor_distributions.optimization import find_ppf
@@ -114,7 +115,7 @@ def rvs(mu, sigma, alpha, size=None, random_state=None):
 def logpdf(x, mu, sigma, alpha):
     tau = 1.0 / (sigma**2)
     return (
-        pt.log(1 + pt.erf(((x - mu) * pt.sqrt(tau) * alpha) / pt.sqrt(2)))
+        pt.log(1 + pt.erf(((x - mu) * pt.sqrt(tau) * alpha) / SQRT2))
         + (-tau * (x - mu) ** 2 + pt.log(tau / pt.pi / 2.0)) / 2.0
     )
 

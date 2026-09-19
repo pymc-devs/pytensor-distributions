@@ -3,6 +3,7 @@ from pytensor.tensor.math import betaincinv
 from pytensor.tensor.special import betaln
 
 from pytensor_distributions.helper import (
+    LOG2,
     continuous_entropy,
     continuous_mode,
     isf_bounds_cont,
@@ -13,7 +14,7 @@ from pytensor_distributions.lmoments import _lmoments
 
 def _raw_moment(n, a, b):
     """Compute the n-th raw moment of the standardized Jones-Faddy skew-t."""
-    log_coeff = 0.5 * n * pt.log(a + b) - n * pt.log(2) - betaln(a, b)
+    log_coeff = 0.5 * n * pt.log(a + b) - n * LOG2 - betaln(a, b)
 
     if n == 1:
         term0 = pt.exp(betaln(a + 0.5, b - 0.5))
@@ -135,7 +136,7 @@ def logpdf(x, a, b, mu, sigma):
     sqrt_term = pt.sqrt(a + b + z**2)
     a_term = (a + 0.5) * pt.log(1 + z / sqrt_term)
     b_term = (b + 0.5) * pt.log(1 - z / sqrt_term)
-    norm_const = (a + b - 1) * pt.log(2) + betaln(a, b) + 0.5 * pt.log(a + b)
+    norm_const = (a + b - 1) * LOG2 + betaln(a, b) + 0.5 * pt.log(a + b)
     result = a_term + b_term - norm_const - pt.log(sigma)
     return pt.switch(pt.isinf(x), pt.nan, result)
 
@@ -160,8 +161,8 @@ def logcdf(x, a, b, mu, sigma):
 
 def sf(x, a, b, mu, sigma):
     z = (x - mu) / sigma
-    y = 0.5 * (1 + z / pt.sqrt(a + b + z**2))
-    result = 1.0 - pt.betainc(a, b, y)
+    y = 0.5 * (1 - z / pt.sqrt(a + b + z**2))
+    result = pt.betainc(b, a, y)
     result = pt.switch(pt.eq(x, -pt.inf), 1.0, result)
     result = pt.switch(pt.eq(x, pt.inf), 0.0, result)
     return result
@@ -169,30 +170,28 @@ def sf(x, a, b, mu, sigma):
 
 def logsf(x, a, b, mu, sigma):
     z = (x - mu) / sigma
-    y = 0.5 * (1 + z / pt.sqrt(a + b + z**2))
-    result = pt.log1p(-pt.betainc(a, b, y))
+    y = 0.5 * (1 - z / pt.sqrt(a + b + z**2))
+    result = pt.log(pt.betainc(b, a, y))
     result = pt.switch(pt.eq(x, -pt.inf), 0.0, result)
     result = pt.switch(pt.eq(x, pt.inf), -pt.inf, result)
     return result
 
 
 def ppf(q, a, b, mu, sigma):
-    a_b, b_b, mu_b, sigma_b = pt.broadcast_arrays(a, b, mu, sigma)
-    bval = betaincinv(a_b, b_b, q)
-    num = (2 * bval - 1) * pt.sqrt(a_b + b_b)
+    bval = betaincinv(a, b, q)
+    num = (2 * bval - 1) * pt.sqrt(a + b)
     denom = 2 * pt.sqrt(bval * (1 - bval))
     z = num / denom
-    result = mu_b + sigma_b * z
+    result = mu + sigma * z
     return ppf_bounds_cont(result, q, -pt.inf, pt.inf)
 
 
 def isf(q, a, b, mu, sigma):
-    a_b, b_b, mu_b, sigma_b = pt.broadcast_arrays(a, b, mu, sigma)
-    bval = betaincinv(b_b, a_b, q)
-    num = (2 * bval - 1) * pt.sqrt(a_b + b_b)
+    bval = betaincinv(b, a, q)
+    num = (2 * bval - 1) * pt.sqrt(a + b)
     denom = 2 * pt.sqrt(bval * (1 - bval))
     z = num / denom
-    result = mu_b - sigma_b * z
+    result = mu - sigma * z
     return isf_bounds_cont(result, q, -pt.inf, pt.inf)
 
 

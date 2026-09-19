@@ -1,6 +1,6 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import cdf_bounds, isf_bounds_cont, ppf_bounds_cont
+from pytensor_distributions.helper import LOG2, cdf_bounds, isf_bounds_cont, ppf_bounds_cont
 
 
 def mean(mu, beta):
@@ -43,7 +43,7 @@ def lmoment1(mu, beta):
 def lmoment2(mu, beta):
     shape = pt.broadcast_arrays(mu, beta)[0]
     # $\beta \ln 2$
-    return pt.full_like(shape, beta * 0.6931471805599453)
+    return pt.full_like(shape, beta * LOG2)
 
 
 def lmoment3(mu, beta):

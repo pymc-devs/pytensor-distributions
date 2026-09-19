@@ -1,16 +1,16 @@
 import pytensor.tensor as pt
 
 from pytensor_distributions import normal as Normal
-from pytensor_distributions.helper import logdiffexp, ppf_bounds_cont
+from pytensor_distributions.helper import LOG2, logdiffexp, ppf_bounds_cont
 from pytensor_distributions.lmoments import _lmoments
 
 
 def _phi(z):
-    return 0.5 * (1 + pt.erf(z / pt.sqrt(2.0)))
+    return 0.5 * (1 + pt.erf(z / 2**0.5))
 
 
 def _Phi_inv(p):
-    return pt.sqrt(2.0) * pt.erfinv(2 * p - 1)
+    return 2**0.5 * pt.erfinv(2 * p - 1)
 
 
 def _log_phi(z):
@@ -34,9 +34,9 @@ def _log_erfc(x):
 
 def _log_Z(alpha, beta):
     """Compute log(Phi(beta) - Phi(alpha)) robustly."""
-    a = alpha / pt.sqrt(2.0)
-    b = beta / pt.sqrt(2.0)
-    log_half = pt.log(0.5)
+    a = alpha / 2**0.5
+    b = beta / 2**0.5
+    log_half = -LOG2
 
     # Case 1: alpha > 0 (implies beta > 0). Upper tail.
     # Z = 0.5 * (erfc(a) - erfc(b)). a < b.
@@ -255,10 +255,10 @@ def ppf(q, mu, sigma, lower, upper):
         return _Phi_inv(q * Z + _phi(alpha))
 
     def ppf_survival(q, alpha, beta):
-        sb = 0.5 * pt.erfc(beta / pt.sqrt(2.0))
-        sa = 0.5 * pt.erfc(alpha / pt.sqrt(2.0))
+        sb = 0.5 * pt.erfc(beta / 2**0.5)
+        sa = 0.5 * pt.erfc(alpha / 2**0.5)
         term = q * sb + (1 - q) * sa
-        return pt.sqrt(2.0) * pt.erfcinv(2 * term)
+        return 2**0.5 * pt.erfcinv(2 * term)
 
     result_standard = ppf_standard(q, alpha, beta)
     result_survival = ppf_survival(q, alpha, beta)

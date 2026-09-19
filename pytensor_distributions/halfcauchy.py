@@ -1,6 +1,6 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import isf_bounds_cont, ppf_bounds_cont
+from pytensor_distributions.helper import LOG2, isf_bounds_cont, ppf_bounds_cont
 
 
 def mean(beta):
@@ -91,9 +91,7 @@ def rvs(beta, size=None, random_state=None):
 
 
 def logpdf(x, beta):
-    return pt.where(
-        pt.lt(x, 0), -pt.inf, pt.log(2) - pt.log(pt.pi * beta) - pt.log(1 + (x / beta) ** 2)
-    )
+    return pt.where(pt.lt(x, 0), -pt.inf, LOG2 - pt.log(pt.pi * beta) - pt.log(1 + (x / beta) ** 2))
 
 
 def logsf(x, beta):

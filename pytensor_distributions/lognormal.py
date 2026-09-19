@@ -1,6 +1,6 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import cdf_bounds, isf_bounds_cont, ppf_bounds_cont
+from pytensor_distributions.helper import SQRT2, cdf_bounds, isf_bounds_cont, ppf_bounds_cont
 from pytensor_distributions.lmoments import _lmoments
 
 
@@ -60,12 +60,12 @@ def entropy(mu, sigma):
 
 
 def cdf(x, mu, sigma):
-    prob = 0.5 * (1 + pt.erf((pt.log(x) - mu) / (sigma * pt.sqrt(2))))
+    prob = 0.5 * (1 + pt.erf((pt.log(x) - mu) / (sigma * SQRT2)))
     return cdf_bounds(prob, x, 0, pt.inf)
 
 
 def isf(x, mu, sigma):
-    return isf_bounds_cont(pt.exp(mu - sigma * pt.sqrt(2) * pt.erfinv(2 * x - 1)), x, 0, pt.inf)
+    return isf_bounds_cont(pt.exp(mu + sigma * 2**0.5 * pt.erfcinv(2 * x)), x, 0, pt.inf)
 
 
 def pdf(x, mu, sigma):
@@ -73,7 +73,7 @@ def pdf(x, mu, sigma):
 
 
 def ppf(q, mu, sigma):
-    return ppf_bounds_cont(pt.exp(mu + sigma * pt.sqrt(2) * pt.erfinv(2 * q - 1)), q, 0, pt.inf)
+    return ppf_bounds_cont(pt.exp(mu - sigma * 2**0.5 * pt.erfcinv(2 * q)), q, 0, pt.inf)
 
 
 def sf(x, mu, sigma):
@@ -91,8 +91,8 @@ def logcdf(x, mu, sigma):
         -pt.inf,
         pt.switch(
             pt.lt(z, -1.0),
-            pt.log(pt.erfcx(-z / pt.sqrt(2.0)) / 2.0) - pt.sqr(z) / 2.0,
-            pt.log1p(-pt.erfc(z / pt.sqrt(2.0)) / 2.0),
+            pt.log(pt.erfcx(-z / 2**0.5) / 2.0) - pt.sqr(z) / 2.0,
+            pt.log1p(-pt.erfc(z / 2**0.5) / 2.0),
         ),
     )
 
@@ -115,7 +115,7 @@ def logsf(x, mu, sigma):
         0.0,  # sf(x) = 1 for x <= 0, so log(1) = 0
         pt.switch(
             pt.gt(z, 1.0),
-            pt.log(pt.erfcx(z / pt.sqrt(2.0)) / 2.0) - pt.sqr(z) / 2.0,
-            pt.log1p(-0.5 * (1 + pt.erf(z / pt.sqrt(2.0)))),
+            pt.log(pt.erfcx(z / 2**0.5) / 2.0) - pt.sqr(z) / 2.0,
+            pt.log1p(-0.5 * (1 + pt.erf(z / 2**0.5))),
         ),
     )

@@ -3,6 +3,7 @@ from pytensor import scan
 from pytensor.scan.utils import until
 
 from pytensor_distributions.helper import (
+    LOG2,
     cdf_bounds,
     continuous_entropy,
     continuous_kurtosis,
@@ -25,7 +26,7 @@ def _upper_bound(h, z):
 def _log_cosh_half(z):
     """Compute log(cosh(z/2)) in a numerically stable way."""
     abs_half_z = pt.abs(z / 2)
-    return abs_half_z + pt.log1p(pt.exp(-2 * abs_half_z)) - pt.log(2.0)
+    return abs_half_z + pt.log1p(pt.exp(-2 * abs_half_z)) - LOG2
 
 
 def _log_pg_density_base(x, h, N=20):
@@ -64,7 +65,7 @@ def _log_pg_density_base(x, h, N=20):
     log_series = pt.log(pt.maximum(signed_sum, 1e-300)) + max_log
 
     # Global prefactor: (h-1)*log(2) - gammaln(h)
-    log_prefactor = (h - 1) * pt.log(2.0) - pt.gammaln(h)
+    log_prefactor = (h - 1) * LOG2 - pt.gammaln(h)
 
     return log_prefactor + log_series
 
@@ -155,7 +156,7 @@ def ppf(q, h, z, max_iter=50, tol=1e-8):
     sigma_ln_sq = pt.log1p(v / m**2)
     mu_ln = pt.log(m) - sigma_ln_sq / 2
     sigma_ln = pt.sqrt(sigma_ln_sq)
-    x0 = pt.exp(mu_ln + sigma_ln * pt.sqrt(2.0) * pt.erfinv(2 * q - 1))
+    x0 = pt.exp(mu_ln + sigma_ln * 2**0.5 * pt.erfinv(2 * q - 1))
     x0 = pt.maximum(x0, _lower_bound())
 
     lb = _lower_bound()

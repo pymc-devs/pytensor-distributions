@@ -1,5 +1,6 @@
 import pytensor.tensor as pt
 
+from pytensor_distributions.helper import SQRT2
 from pytensor_distributions.lmoments import _lmoments
 
 
@@ -28,7 +29,7 @@ def std(lower, c, upper):
 
 
 def skewness(lower, c, upper):
-    num = pt.sqrt(2) * (lower + upper - 2 * c) * (2 * lower - upper - c) * (lower - 2 * upper + c)
+    num = SQRT2 * (lower + upper - 2 * c) * (2 * lower - upper - c) * (lower - 2 * upper + c)
     denom = 5 * pt.pow(lower**2 + upper**2 + c**2 - lower * c - c * upper - lower * upper, 1.5)
     return num / denom
 

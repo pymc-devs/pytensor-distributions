@@ -1,6 +1,6 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import cdf_bounds, ppf_bounds_cont
+from pytensor_distributions.helper import LOG2, SQRT2, cdf_bounds, ppf_bounds_cont
 
 
 def mean(mu, b):
@@ -25,7 +25,7 @@ def var(mu, b):
 
 def std(mu, b):
     _, b_b = pt.broadcast_arrays(mu, b)
-    return pt.sqrt(2) * b_b
+    return SQRT2 * b_b
 
 
 def skewness(mu, b):
@@ -89,19 +89,15 @@ def rvs(mu, b, size=None, random_state=None):
 
 
 def logpdf(x, mu, b):
-    return pt.log(0.5) - pt.abs((x - mu) / b) - pt.log(b)
+    return -LOG2 - pt.abs((x - mu) / b) - pt.log(b)
 
 
 def logcdf(x, mu, b):
     y = (x - mu) / b
     return pt.switch(
         pt.le(y, 0),
-        pt.log(0.5) + y,
-        pt.switch(
-            pt.gt(y, 1),
-            pt.log1p(-0.5 * pt.exp(-y)),
-            pt.log(1 - 0.5 * pt.exp(-y)),
-        ),
+        -LOG2 + y,
+        pt.log1p(-0.5 * pt.exp(-y)),
     )
 
 
@@ -109,10 +105,6 @@ def logsf(x, mu, b):
     y = (x - mu) / b
     return pt.switch(
         pt.le(y, 0),
-        pt.switch(
-            pt.lt(y, -1),
-            pt.log1p(-0.5 * pt.exp(y)),
-            pt.log(1 - 0.5 * pt.exp(y)),
-        ),
-        pt.log(0.5) - y,
+        pt.log1p(-0.5 * pt.exp(y)),
+        -LOG2 - y,
     )

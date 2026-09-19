@@ -1,6 +1,6 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import logdiffexp
+from pytensor_distributions.helper import SQRT2, logdiffexp
 from pytensor_distributions.lmoments import _lmoments
 from pytensor_distributions.optimization import find_ppf
 
@@ -61,7 +61,7 @@ def _wald_gini_terms(x, mu, lam):
     eps = 1e-12
     u = pt.sqrt(lam / (x + eps))
     v = x / mu
-    sqrt2 = pt.sqrt(2)
+    sqrt2 = SQRT2
     return u * (v - 1) / sqrt2, u * (v + 1) / sqrt2
 
 

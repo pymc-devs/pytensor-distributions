@@ -1,4 +1,8 @@
+import numpy as np
 import pytensor.tensor as pt
+
+LOG2 = np.log(2.0)
+SQRT2 = 2.0**0.5
 
 
 def cdf_bounds(prob, x, lower, upper):
@@ -55,11 +59,7 @@ def ppf_bounds_cont(x_val, q, lower, upper):
 
 
 def isf_bounds_cont(x_val, q, lower, upper):
-    return pt.switch(
-        pt.or_(pt.lt(q, 0), pt.gt(q, 1)),
-        pt.nan,
-        pt.switch(pt.eq(q, 0), upper, pt.switch(pt.eq(q, 1), lower, x_val)),
-    )
+    return ppf_bounds_cont(x_val, q, upper, lower)
 
 
 def ppf_bounds_disc(x_val, q, lower, upper):
@@ -377,7 +377,7 @@ def von_mises_cdf(x, mu, kappa):
     # Normal approximation
     b = pt.sqrt(2 / pt.pi) / pt.ive(0.0, kappa_flat)  # (K,)
     z = b * pt.sin(pt.atleast_1d(x_wrapped) / 2.0)  # (N[, P], K)
-    cdf_norm = 0.5 * (1.0 + pt.erf(z / pt.sqrt(2.0)))[None]  # (1, N[, P], K)
+    cdf_norm = 0.5 * (1.0 + pt.erf(z / 2**0.5))[None]  # (1, N[, P], K)
 
     result = pt.switch(use_series, cdf_series, cdf_norm)
     result = result + ix
@@ -518,7 +518,7 @@ def ncx2_cdf(x, df, nc):
     # ncx2(df, nc) ~ N(df + nc, 2*(df + 2*nc)) for large nc
     mean_approx = df + nc
     std_approx = pt.sqrt(2 * (df + 2 * nc))
-    normal_result = 0.5 * (1 + pt.erf((x - mean_approx) / (std_approx * pt.sqrt(2))))
+    normal_result = 0.5 * (1 + pt.erf((x - mean_approx) / (std_approx * SQRT2)))
 
     # Use series for nc < 1000, normal approximation otherwise
     return pt.switch(pt.lt(nc, 1000), series_result, normal_result)

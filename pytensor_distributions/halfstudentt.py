@@ -5,7 +5,7 @@ from pytensor.tensor.special import betaln
 from pytensor_distributions.halfnormal import cdf as halfnormal_cdf
 from pytensor_distributions.halfnormal import entropy as halfnormal_entropy
 from pytensor_distributions.halfnormal import logpdf as halfnormal_logpdf
-from pytensor_distributions.helper import cdf_bounds, ppf_bounds_cont
+from pytensor_distributions.helper import LOG2, cdf_bounds, ppf_bounds_cont
 from pytensor_distributions.lmoments import _lmoments
 
 
@@ -86,7 +86,7 @@ def entropy(nu, sigma):
         + 0.5 * (nu + 1) * (pt.psi(0.5 * (nu + 1)) - pt.psi(0.5 * nu))
         + pt.log(pt.sqrt(nu))
         + betaln(0.5 * nu, 0.5)
-        - pt.log(2),
+        - LOG2,
     )
 
 
@@ -141,7 +141,7 @@ def logpdf(x, nu, sigma):
             - pt.gammaln(nu / 2)
             - 0.5 * pt.log(nu * pt.pi * sigma**2)
             - 0.5 * (nu + 1) * pt.log(1 + (x / sigma) ** 2 / nu)
-            + pt.log(2)
+            + LOG2
         ),
     )
 

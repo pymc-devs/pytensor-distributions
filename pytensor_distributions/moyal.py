@@ -1,11 +1,11 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import ppf_bounds_cont
+from pytensor_distributions.helper import LOG2, ppf_bounds_cont
 from pytensor_distributions.lmoments import _lmoments
 
 
 def mean(mu, sigma):
-    return mu + sigma * (pt.euler_gamma + pt.log(2))
+    return mu + sigma * (pt.euler_gamma + LOG2)
 
 
 def mode(mu, sigma):

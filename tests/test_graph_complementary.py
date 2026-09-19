@@ -10,7 +10,6 @@ from tests.helper_graph import compile_fn, compute_nodes, get_params, make_input
 FAST_COMPILE_MODE = Mode(linker="py", optimizer="fast_compile")
 
 DISTRIBUTIONS = [
-    # Continuous
     "asymmetriclaplace",
     "beta",
     "betascaled",
@@ -45,7 +44,6 @@ DISTRIBUTIONS = [
     "vonmises",
     "wald",
     "weibull",
-    # Discrete
     "bernoulli",
     "betabinomial",
     "binomial",
@@ -60,7 +58,6 @@ DISTRIBUTIONS = [
     "zi_poisson",
 ]
 
-# Complementary function pairs that should share subexpressions
 COMPLEMENTARY_PAIRS = [
     ("logcdf", "logsf"),
     ("cdf", "sf"),
@@ -83,21 +80,19 @@ def test_complementary_functions_share_subexpressions(module_name, fn1_name, fn2
     """
     module = importlib.import_module(f"pytensor_distributions.{module_name}")
 
-    # Get parameters (both functions should have the same signature)
+    if not hasattr(module, fn1_name) or not hasattr(module, fn2_name):
+        pytest.skip(f"{module_name} missing {fn1_name} or {fn2_name}")
+
     params = get_params(module, fn1_name)
     inputs = make_inputs(params)
 
     fn1 = getattr(module, fn1_name)
     fn2 = getattr(module, fn2_name)
 
-    # Compile individually
     fn1_only = compile_fn([fn1(*inputs)], inputs, mode=FAST_COMPILE_MODE)
     fn2_only = compile_fn([fn2(*inputs)], inputs, mode=FAST_COMPILE_MODE)
-
-    # Compile together
     combined = compile_fn([fn1(*inputs), fn2(*inputs)], inputs, mode=FAST_COMPILE_MODE)
 
-    # Count compute nodes
     n_fn1 = len(compute_nodes(fn1_only))
     n_fn2 = len(compute_nodes(fn2_only))
     n_combined = len(compute_nodes(combined))
