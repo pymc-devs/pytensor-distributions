@@ -18,8 +18,8 @@ def _log_phi(z):
 
 
 def _alpha_beta(mu, sigma, lower, upper):
-    alpha_raw = (lower - mu) / sigma
-    beta_raw = (upper - mu) / sigma
+    alpha_raw = pt.as_tensor((lower - mu) / sigma)
+    beta_raw = pt.as_tensor((upper - mu) / sigma)
 
     alpha = pt.switch(pt.isinf(alpha_raw) & (alpha_raw < 0), -100.0, alpha_raw)
     beta = pt.switch(pt.isinf(beta_raw) & (beta_raw > 0), 100.0, beta_raw)
@@ -274,5 +274,11 @@ def isf(q, mu, sigma, lower, upper):
 
 
 def rvs(mu, sigma, lower, upper, size=None, random_state=None):
+    bcast = pt.broadcast_arrays(mu, sigma, lower, upper)[0]
+    if size is None:
+        size = bcast.shape
+    else:
+        size = (size,) if isinstance(size, int) else tuple(size)
+        size = pt.broadcast_shape(pt.empty(size), bcast)
     u = pt.random.uniform(0, 1, size=size, rng=random_state, return_next_rng=True)[1]
     return ppf(u, mu, sigma, lower, upper)

@@ -86,7 +86,15 @@ def sf(x, beta):
 
 
 def rvs(beta, size=None, random_state=None):
-    uniform_samples = pt.random.uniform(0, 1, rng=random_state, size=size, return_next_rng=True)[1]
+    beta = pt.as_tensor(beta)
+    if size is None:
+        u_size = beta.shape
+    else:
+        size = (size,) if isinstance(size, int) else tuple(size)
+        u_size = pt.broadcast_shape(pt.empty(size), beta)
+    uniform_samples = pt.random.uniform(0, 1, rng=random_state, size=u_size, return_next_rng=True)[
+        1
+    ]
     return beta * pt.tan(pt.pi / 2 * uniform_samples)
 
 

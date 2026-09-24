@@ -86,9 +86,14 @@ def sf(x, mu, beta):
 
 
 def rvs(mu, beta, size=None, random_state=None):
-    return ppf(
-        pt.random.uniform(0, 1, rng=random_state, size=size, return_next_rng=True)[1], mu, beta
-    )
+    bcast = pt.broadcast_arrays(mu, beta)[0]
+    if size is None:
+        size = bcast.shape
+    else:
+        size = (size,) if isinstance(size, int) else tuple(size)
+        size = pt.broadcast_shape(pt.empty(size), bcast)
+    u = pt.random.uniform(0, 1, size=size, rng=random_state, return_next_rng=True)[1]
+    return ppf(u, mu, beta)
 
 
 def logcdf(x, mu, beta):

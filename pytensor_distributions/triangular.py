@@ -103,7 +103,13 @@ def isf(q, lower, c, upper):
 
 
 def rvs(lower, c, upper, size=None, random_state=None):
-    u = pt.random.uniform(0.0, 1.0, size=size, rng=random_state, return_next_rng=True)[1]
+    bcast = pt.broadcast_arrays(lower, c, upper)[0]
+    if size is None:
+        u_size = bcast.shape
+    else:
+        size = (size,) if isinstance(size, int) else tuple(size)
+        u_size = pt.broadcast_shape(pt.empty(size), bcast)
+    u = pt.random.uniform(0.0, 1.0, size=u_size, rng=random_state, return_next_rng=True)[1]
     return ppf(u, lower, c, upper)
 
 

@@ -133,5 +133,11 @@ def isf(q, alpha, beta):
 
 
 def rvs(alpha, beta, size=None, random_state=None):
-    u = pt.random.uniform(size=size, rng=random_state, return_next_rng=True)[1]
+    bcast = pt.broadcast_arrays(alpha, beta)[0]
+    if size is None:
+        u_size = bcast.shape
+    else:
+        size = (size,) if isinstance(size, int) else tuple(size)
+        u_size = pt.broadcast_shape(pt.empty(size), bcast)
+    u = pt.random.uniform(size=u_size, rng=random_state, return_next_rng=True)[1]
     return alpha * (u / (1 - u)) ** (1 / beta)

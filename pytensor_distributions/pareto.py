@@ -86,7 +86,13 @@ def isf(x, alpha, m):
 
 
 def rvs(alpha, m, size=None, random_state=None):
-    u = pt.random.uniform(size=size, rng=random_state, return_next_rng=True)[1]
+    bcast = pt.broadcast_arrays(alpha, m)[0]
+    if size is None:
+        u_size = bcast.shape
+    else:
+        size = (size,) if isinstance(size, int) else tuple(size)
+        u_size = pt.broadcast_shape(pt.empty(size), bcast)
+    u = pt.random.uniform(size=u_size, rng=random_state, return_next_rng=True)[1]
     return m / (1 - u) ** (1 / alpha)
 
 
