@@ -119,8 +119,6 @@ def ppf(q, psi, n, p):
 
 
 def sf(x, psi, n, p):
-    # for 0 <= x < n: 1 - cdf = psi * (1 - base_cdf) = psi * base_sf,
-    # computed directly so the upper tail does not cancel against cdf -> 1
     return sf_bounds(psi * Binomial.sf(x, n, p), x, 0, n)
 
 
