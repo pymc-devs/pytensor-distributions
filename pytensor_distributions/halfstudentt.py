@@ -4,8 +4,12 @@ from pytensor.tensor.special import betaln
 
 from pytensor_distributions.halfnormal import cdf as halfnormal_cdf
 from pytensor_distributions.halfnormal import entropy as halfnormal_entropy
+from pytensor_distributions.halfnormal import isf as halfnormal_isf
+from pytensor_distributions.halfnormal import logcdf as halfnormal_logcdf
 from pytensor_distributions.halfnormal import logpdf as halfnormal_logpdf
-from pytensor_distributions.helper import LOG2, cdf_bounds, ppf_bounds_cont
+from pytensor_distributions.halfnormal import logsf as halfnormal_logsf
+from pytensor_distributions.halfnormal import sf as halfnormal_sf
+from pytensor_distributions.helper import LOG2, cdf_bounds, isf_bounds_cont, ppf_bounds_cont
 from pytensor_distributions.lmoments import _lmoments
 
 
@@ -90,10 +94,15 @@ def entropy(nu, sigma):
     )
 
 
+def _factor(x, nu, sigma):
+    x_norm = x / sigma
+    return 0.5 * pt.betainc(0.5 * nu, 0.5, nu / (x_norm**2 + nu))
+
+
 def cdf(x, nu, sigma):
     # we use a halfnormal approximation for large nu
     x_norm = x / sigma
-    factor = 0.5 * pt.betainc(0.5 * nu, 0.5, nu / (x_norm**2 + nu))
+    factor = _factor(x, nu, sigma)
     cdf_ = pt.switch(pt.lt(x_norm, 0), factor, 1 - factor) * 2 - 1
     halft_cdf = cdf_bounds(cdf_, x, 0, pt.inf)
 
@@ -101,7 +110,12 @@ def cdf(x, nu, sigma):
 
 
 def isf(x, nu, sigma):
-    return ppf(1 - x, nu, sigma)
+    inv_factor = pt.sqrt(nu / betaincinv(0.5 * nu, 0.5, x) - nu)
+    return pt.switch(
+        pt.gt(nu, 1e5),
+        halfnormal_isf(x, sigma),
+        isf_bounds_cont(inv_factor * sigma, x, 0, pt.inf),
+    )
 
 
 def pdf(x, nu, sigma):
@@ -119,7 +133,10 @@ def ppf(q, nu, sigma):
 
 
 def sf(x, nu, sigma):
-    return 1 - cdf(x, nu, sigma)
+    x_norm = x / sigma
+    factor = _factor(x, nu, sigma)
+    halft_sf = pt.switch(pt.lt(x_norm, 0), 1.0, 2 * factor)
+    return pt.switch(pt.gt(nu, 1e5), halfnormal_sf(x, sigma), halft_sf)
 
 
 def rvs(nu, sigma, size=None, random_state=None):
@@ -128,7 +145,10 @@ def rvs(nu, sigma, size=None, random_state=None):
 
 
 def logcdf(x, nu, sigma):
-    return pt.log(cdf(x, nu, sigma))
+    x_norm = x / sigma
+    factor = _factor(x, nu, sigma)
+    halft_logcdf = pt.switch(pt.lt(x_norm, 0), -pt.inf, pt.log1p(-2 * factor))
+    return pt.switch(pt.gt(nu, 1e5), halfnormal_logcdf(x, sigma), halft_logcdf)
 
 
 def logpdf(x, nu, sigma):
@@ -149,4 +169,7 @@ def logpdf(x, nu, sigma):
 
 
 def logsf(x, nu, sigma):
-    return pt.log1mexp(logcdf(x, nu, sigma))
+    x_norm = x / sigma
+    factor = _factor(x, nu, sigma)
+    halft_logsf = pt.switch(pt.lt(x_norm, 0), 0.0, LOG2 + pt.log(factor))
+    return pt.switch(pt.gt(nu, 1e5), halfnormal_logsf(x, sigma), halft_logsf)

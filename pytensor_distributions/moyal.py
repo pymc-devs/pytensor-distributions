@@ -1,6 +1,6 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import LOG2, ppf_bounds_cont
+from pytensor_distributions.helper import LOG2, isf_bounds_cont, ppf_bounds_cont
 from pytensor_distributions.lmoments import _lmoments
 
 
@@ -59,7 +59,7 @@ def entropy(mu, sigma):
 
 def cdf(x, mu, sigma):
     z_val = (x - mu) / sigma
-    return 1 - pt.erf(pt.exp(-z_val / 2) * (2**-0.5))
+    return pt.erfc(pt.exp(-z_val / 2) * (2**-0.5))
 
 
 def pdf(x, mu, sigma):
@@ -67,16 +67,18 @@ def pdf(x, mu, sigma):
 
 
 def ppf(q, mu, sigma):
-    x_val = sigma * -pt.log(2.0 * pt.erfinv(1 - q) ** 2) + mu
+    x_val = sigma * -pt.log(2.0 * pt.erfcinv(q) ** 2) + mu
     return ppf_bounds_cont(x_val, q, -pt.inf, pt.inf)
 
 
 def sf(x, mu, sigma):
-    return 1 - cdf(x, mu, sigma)
+    z_val = (x - mu) / sigma
+    return pt.erf(pt.exp(-z_val / 2) * (2**-0.5))
 
 
 def isf(x, mu, sigma):
-    return ppf(1 - x, mu, sigma)
+    x_val = sigma * -pt.log(2.0 * pt.erfinv(x) ** 2) + mu
+    return isf_bounds_cont(x_val, x, -pt.inf, pt.inf)
 
 
 def rvs(mu, sigma, size=None, random_state=None):
@@ -92,7 +94,7 @@ def rvs(mu, sigma, size=None, random_state=None):
 
 def logcdf(x, mu, sigma):
     z_val = (x - mu) / sigma
-    return pt.log(1 - pt.erf(pt.exp(-z_val / 2) * (2**-0.5)))
+    return pt.log(pt.erfc(pt.exp(-z_val / 2) * (2**-0.5)))
 
 
 def logpdf(x, mu, sigma):

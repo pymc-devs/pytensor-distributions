@@ -3,7 +3,7 @@ import pytensor.tensor as pt
 from pytensor_distributions import negativebinomial as NegativeBinomial
 from pytensor_distributions.helper import cdf_bounds, discrete_entropy, sf_bounds, zi_mode
 from pytensor_distributions.lmoments import _lmoments
-from pytensor_distributions.optimization import find_ppf_discrete
+from pytensor_distributions.optimization import find_isf_discrete, find_ppf_discrete
 
 
 def mean(psi, n, p):
@@ -144,7 +144,7 @@ def sf(x, psi, n, p):
 
 
 def isf(q, psi, n, p):
-    return ppf(1.0 - q, psi, n, p)
+    return find_isf_discrete(q, mean(psi, n, p), 0, pt.inf, sf, pdf, psi, n, p)
 
 
 def rvs(psi, n, p, size=None, random_state=None):

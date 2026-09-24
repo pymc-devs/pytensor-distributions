@@ -4,7 +4,7 @@ from pytensor_distributions.halfnormal import entropy as halfnormal_entropy
 from pytensor_distributions.helper import SQRT2
 from pytensor_distributions.lmoments import _lmoments
 from pytensor_distributions.normal import entropy as normal_entropy
-from pytensor_distributions.optimization import find_ppf
+from pytensor_distributions.optimization import find_isf, find_ppf
 
 
 def mean(mu, sigma, alpha):
@@ -86,7 +86,7 @@ def logcdf(x, mu, sigma, alpha):
 
 
 def isf(x, mu, sigma, alpha):
-    return ppf(1 - x, mu, sigma, alpha)
+    return find_isf(x, mean(mu, sigma, alpha), -pt.inf, pt.inf, sf, pdf, mu, sigma, alpha)
 
 
 def pdf(x, mu, sigma, alpha):

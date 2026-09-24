@@ -3,7 +3,7 @@ import pytensor.tensor as pt
 from pytensor_distributions import poisson as Poisson
 from pytensor_distributions.helper import cdf_bounds, discrete_entropy, sf_bounds, zi_mode
 from pytensor_distributions.lmoments import _lmoments
-from pytensor_distributions.optimization import find_ppf_discrete
+from pytensor_distributions.optimization import find_isf_discrete, find_ppf_discrete
 
 
 def mean(psi, mu):
@@ -125,7 +125,7 @@ def sf(x, psi, mu):
 
 
 def isf(q, psi, mu):
-    return ppf(1.0 - q, psi, mu)
+    return find_isf_discrete(q, mean(psi, mu), 0, pt.inf, sf, pdf, psi, mu)
 
 
 def rvs(psi, mu, size=None, random_state=None):

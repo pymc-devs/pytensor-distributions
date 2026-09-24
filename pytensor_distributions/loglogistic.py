@@ -1,6 +1,6 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import cdf_bounds, ppf_bounds_cont
+from pytensor_distributions.helper import cdf_bounds, isf_bounds_cont, ppf_bounds_cont
 from pytensor_distributions.lmoments import _lmoments
 
 
@@ -124,12 +124,13 @@ def logsf(x, alpha, beta):
 
 
 def ppf(q, alpha, beta):
-    x_val = alpha * (q / (1 - q)) ** (1 / beta)
+    x_val = alpha * pt.exp((pt.log(q) - pt.log1p(-q)) / beta)
     return ppf_bounds_cont(x_val, q, 0, pt.inf)
 
 
 def isf(q, alpha, beta):
-    return ppf(1 - q, alpha, beta)
+    x_val = alpha * pt.exp((pt.log1p(-q) - pt.log(q)) / beta)
+    return isf_bounds_cont(x_val, q, 0, pt.inf)
 
 
 def rvs(alpha, beta, size=None, random_state=None):

@@ -1,7 +1,7 @@
 import pytensor.tensor as pt
 from pytensor.tensor.special import betaln, xlogy
 
-from pytensor_distributions.helper import cdf_bounds, ppf_bounds_cont, sf_bounds
+from pytensor_distributions.helper import cdf_bounds, isf_bounds_cont, ppf_bounds_cont, sf_bounds
 
 
 def mean(a, b):
@@ -99,7 +99,8 @@ def sf(x, a, b):
 
 
 def isf(x, a, b):
-    return ppf(1 - x, a, b)
+    x_val = (1 - x ** (1 / b)) ** (1 / a)
+    return isf_bounds_cont(x_val, x, 0, 1)
 
 
 def rvs(a, b, size=None, random_state=None):

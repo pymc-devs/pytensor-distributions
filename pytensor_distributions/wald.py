@@ -2,7 +2,7 @@ import pytensor.tensor as pt
 
 from pytensor_distributions.helper import SQRT2, logdiffexp
 from pytensor_distributions.lmoments import _lmoments
-from pytensor_distributions.optimization import find_ppf
+from pytensor_distributions.optimization import find_isf, find_ppf
 
 
 def mean(mu, lam):
@@ -92,7 +92,7 @@ def logcdf(x, mu, lam):
 
 
 def isf(x, mu, lam):
-    return ppf(1 - x, mu, lam)
+    return find_isf(x, mode(mu, lam), 0, pt.inf, sf, pdf, mu, lam)
 
 
 def pdf(x, mu, lam):

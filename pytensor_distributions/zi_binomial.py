@@ -1,9 +1,9 @@
 import pytensor.tensor as pt
 
 from pytensor_distributions import binomial as Binomial
-from pytensor_distributions.helper import cdf_bounds, discrete_entropy, zi_mode
+from pytensor_distributions.helper import cdf_bounds, discrete_entropy, sf_bounds, zi_mode
 from pytensor_distributions.lmoments import _lmoments
-from pytensor_distributions.optimization import find_ppf_discrete
+from pytensor_distributions.optimization import find_isf_discrete, find_ppf_discrete
 
 
 def mean(psi, n, p):
@@ -119,11 +119,13 @@ def ppf(q, psi, n, p):
 
 
 def sf(x, psi, n, p):
-    return 1.0 - cdf(x, psi, n, p)
+    # for 0 <= x < n: 1 - cdf = psi * (1 - base_cdf) = psi * base_sf,
+    # computed directly so the upper tail does not cancel against cdf -> 1
+    return sf_bounds(psi * Binomial.sf(x, n, p), x, 0, n)
 
 
 def isf(q, psi, n, p):
-    return ppf(1.0 - q, psi, n, p)
+    return find_isf_discrete(q, mean(psi, n, p), 0, n, sf, pdf, psi, n, p)
 
 
 def rvs(psi, n, p, size=None, random_state=None):

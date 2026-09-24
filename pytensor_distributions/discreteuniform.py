@@ -1,6 +1,12 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import cdf_bounds, discrete_entropy, ppf_bounds_disc
+from pytensor_distributions.helper import (
+    cdf_bounds,
+    discrete_entropy,
+    isf_bounds_disc,
+    ppf_bounds_disc,
+    sf_bounds,
+)
 
 
 def mean(lower, upper):
@@ -73,11 +79,14 @@ def ppf(q, lower, upper):
 
 
 def sf(x, lower, upper):
-    return 1.0 - cdf(x, lower, upper)
+    n = upper - lower + 1
+    return sf_bounds((upper - pt.floor(x)) / n, x, lower, upper)
 
 
 def isf(q, lower, upper):
-    return ppf(1.0 - q, lower, upper)
+    n = upper - lower + 1
+    x_vals = upper - pt.floor(q * n)
+    return isf_bounds_disc(x_vals, q, lower, upper)
 
 
 def rvs(lower, upper, size=None, random_state=None):
@@ -96,4 +105,9 @@ def logcdf(x, lower, upper):
 
 
 def logsf(x, lower, upper):
-    return pt.log1p(-cdf(x, lower, upper))
+    n = upper - lower + 1
+    return pt.switch(
+        pt.lt(x, lower),
+        0.0,
+        pt.switch(pt.gt(x, upper), -pt.inf, pt.log((upper - pt.floor(x)) / n)),
+    )

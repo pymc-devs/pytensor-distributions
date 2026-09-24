@@ -11,6 +11,7 @@ from pytensor_distributions.helper import (
     continuous_skewness,
     ppf_bounds_cont,
 )
+from pytensor_distributions.optimization import find_isf
 
 
 def _lower_bound():
@@ -184,7 +185,7 @@ def ppf(q, h, z, max_iter=50, tol=1e-8):
 
 
 def isf(q, h, z):
-    return ppf(1.0 - q, h, z)
+    return find_isf(q, mean(h, z), 0, pt.inf, sf, pdf, h, z)
 
 
 def rvs(h, z, size=None, random_state=None):

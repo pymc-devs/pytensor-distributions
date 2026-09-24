@@ -1,7 +1,7 @@
 import pytensor.tensor as pt
 
 from pytensor_distributions import normal as Normal
-from pytensor_distributions.helper import LOG2, logdiffexp, ppf_bounds_cont
+from pytensor_distributions.helper import LOG2, isf_bounds_cont, logdiffexp, ppf_bounds_cont
 from pytensor_distributions.lmoments import _lmoments
 
 
@@ -227,7 +227,7 @@ def logcdf(x, mu, sigma, lower, upper):
 
 
 def sf(x, mu, sigma, lower, upper):
-    return 1.0 - cdf(x, mu, sigma, lower, upper)
+    return pt.exp(logsf(x, mu, sigma, lower, upper))
 
 
 def logsf(x, mu, sigma, lower, upper):
@@ -257,7 +257,7 @@ def ppf(q, mu, sigma, lower, upper):
     def ppf_survival(q, alpha, beta):
         sb = 0.5 * pt.erfc(beta / 2**0.5)
         sa = 0.5 * pt.erfc(alpha / 2**0.5)
-        term = q * sb + (1 - q) * sa
+        term = sa + q * (sb - sa)
         return 2**0.5 * pt.erfcinv(2 * term)
 
     result_standard = ppf_standard(q, alpha, beta)
@@ -270,7 +270,12 @@ def ppf(q, mu, sigma, lower, upper):
 
 
 def isf(q, mu, sigma, lower, upper):
-    return ppf(1.0 - q, mu, sigma, lower, upper)
+    alpha, beta = _alpha_beta(mu, sigma, lower, upper)
+    sb = 0.5 * pt.erfc(beta / 2**0.5)
+    sa = 0.5 * pt.erfc(alpha / 2**0.5)
+    term = sb + q * (sa - sb)
+    result = mu + sigma * (2**0.5 * pt.erfcinv(2 * term))
+    return isf_bounds_cont(result, q, lower, upper)
 
 
 def rvs(mu, sigma, lower, upper, size=None, random_state=None):

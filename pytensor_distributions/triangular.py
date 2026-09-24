@@ -99,7 +99,11 @@ def sf(x, lower, c, upper):
 
 
 def isf(q, lower, c, upper):
-    return ppf(1 - q, lower, c, upper)
+    return pt.switch(
+        pt.gt(q, (upper - c) / (upper - lower)),
+        lower + pt.sqrt((upper - lower) * (c - lower) * (1 - q)),
+        upper - pt.sqrt((upper - lower) * (upper - c) * q),
+    )
 
 
 def rvs(lower, c, upper, size=None, random_state=None):

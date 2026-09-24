@@ -2,11 +2,13 @@ import pytensor.tensor as pt
 from pytensor.tensor.math import betaincinv
 from pytensor.tensor.special import betaln
 
-from pytensor_distributions.helper import ppf_bounds_cont
+from pytensor_distributions.helper import isf_bounds_cont, ppf_bounds_cont
 from pytensor_distributions.lmoments import _lmoments
 from pytensor_distributions.normal import entropy as normal_entropy
 from pytensor_distributions.normal import logcdf as normal_logcdf
 from pytensor_distributions.normal import logpdf as normal_logpdf
+from pytensor_distributions.normal import logsf as normal_logsf
+from pytensor_distributions.normal import sf as normal_sf
 
 
 def mean(nu, mu, sigma):
@@ -82,12 +84,25 @@ def entropy(nu, mu, sigma):
     )
 
 
+def _tail_factor(z, nu):
+    return 0.5 * pt.betainc(0.5 * nu, 0.5, nu / (z**2 + nu))
+
+
 def cdf(x, nu, mu, sigma):
     return pt.exp(logcdf(x, nu, mu, sigma))
 
 
 def isf(x, nu, mu, sigma):
-    return ppf(1 - x, nu, mu, sigma)
+    result = pt.switch(
+        pt.abs(x - 0.5) < 1e-14,
+        pt.zeros_like(x),
+        pt.switch(
+            pt.gt(x, 0.5),
+            -pt.sqrt(nu) * pt.sqrt((1.0 / betaincinv(nu * 0.5, 0.5, 2.0 * (1 - x))) - 1.0),
+            pt.sqrt(nu) * pt.sqrt((1.0 / betaincinv(nu * 0.5, 0.5, 2.0 * x)) - 1.0),
+        ),
+    )
+    return isf_bounds_cont(mu + result * sigma, x, -pt.inf, pt.inf)
 
 
 def pdf(x, nu, mu, sigma):
@@ -108,7 +123,10 @@ def ppf(q, nu, mu, sigma):
 
 
 def sf(x, nu, mu, sigma):
-    return cdf(-x, nu, -mu, sigma)
+    z = (x - mu) / sigma
+    factor = _tail_factor(z, nu)
+    sf_t = pt.switch(pt.gt(z, 0), factor, 1 - factor)
+    return pt.switch(pt.gt(nu, 1e5), normal_sf(x, mu, sigma), sf_t)
 
 
 def rvs(nu, mu, sigma, size=None, random_state=None):
@@ -116,9 +134,8 @@ def rvs(nu, mu, sigma, size=None, random_state=None):
 
 
 def logcdf(x, nu, mu, sigma):
-    # we use a normal approximation for large nu
     z = (x - mu) / sigma
-    factor = 0.5 * pt.betainc(0.5 * nu, 0.5, nu / (z**2 + nu))
+    factor = _tail_factor(z, nu)
     logcdf_t = pt.switch(pt.lt(z, 0), pt.log(factor), pt.log1p(-factor))
     return pt.switch(pt.gt(nu, 1e5), normal_logcdf(x, mu, sigma), logcdf_t)
 
@@ -138,4 +155,7 @@ def logpdf(x, nu, mu, sigma):
 
 
 def logsf(x, nu, mu, sigma):
-    return logcdf(-x, nu, -mu, sigma)
+    z = (x - mu) / sigma
+    factor = _tail_factor(z, nu)
+    logsf_t = pt.switch(pt.gt(z, 0), pt.log(factor), pt.log1p(-factor))
+    return pt.switch(pt.gt(nu, 1e5), normal_logsf(x, mu, sigma), logsf_t)

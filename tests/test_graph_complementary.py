@@ -4,6 +4,7 @@ import importlib
 
 import pytest
 from pytensor.compile.mode import Mode
+from pytensor.graph.traversal import ancestors
 
 from tests.helper_graph import compile_fn, compute_nodes, get_params, make_inputs
 
@@ -65,18 +66,28 @@ COMPLEMENTARY_PAIRS = [
 ]
 
 
+def value_dependent_nodes(fn, inputs):
+    """Compute nodes whose outputs depend on the value input (x or q)."""
+    value = inputs[0]
+    return [
+        node
+        for node in compute_nodes(fn)
+        if any(value in ancestors([output]) for output in node.outputs)
+    ]
+
+
 @pytest.mark.parametrize("module_name", DISTRIBUTIONS)
 @pytest.mark.parametrize("fn1_name,fn2_name", COMPLEMENTARY_PAIRS)
 def test_complementary_functions_share_subexpressions(module_name, fn1_name, fn2_name):
     """Complementary functions should share computation when compiled together.
 
     When both functions in a complementary pair (e.g., logcdf/logsf) are used
-    in the same graph, they should share common subexpressions like the
-    standardized value z = (x - mu) / sigma.
+    in the same graph, they should share common value-dependent
+    subexpressions like the standardized value z = (x - mu) / sigma.
 
     If one function delegates to the other with transformed inputs (e.g.,
-    logsf = logcdf(-x, -mu, sigma)), this sharing breaks and the combined
-    graph becomes larger than necessary.
+    logsf = logcdf(-x, -mu, sigma)), the value-dependent computation is
+    duplicated and the combined graph is as large as the two separate graphs.
     """
     module = importlib.import_module(f"pytensor_distributions.{module_name}")
 
@@ -93,14 +104,15 @@ def test_complementary_functions_share_subexpressions(module_name, fn1_name, fn2
     fn2_only = compile_fn([fn2(*inputs)], inputs, mode=FAST_COMPILE_MODE)
     combined = compile_fn([fn1(*inputs), fn2(*inputs)], inputs, mode=FAST_COMPILE_MODE)
 
-    n_fn1 = len(compute_nodes(fn1_only))
-    n_fn2 = len(compute_nodes(fn2_only))
-    n_combined = len(compute_nodes(combined))
+    n_fn1 = len(value_dependent_nodes(fn1_only, inputs))
+    n_fn2 = len(value_dependent_nodes(fn2_only, inputs))
+    n_combined = len(value_dependent_nodes(combined, inputs))
 
     min_shared = 1
     assert n_combined <= n_fn1 + n_fn2 - min_shared, (
-        f"{module_name}.{fn1_name}/{fn2_name}: no subexpression sharing. "
+        f"{module_name}.{fn1_name}/{fn2_name}: no value-dependent subexpression sharing. "
         f"{fn1_name}={n_fn1}, {fn2_name}={n_fn2}, combined={n_combined}. "
-        f"Expected combined < {n_fn1 + n_fn2 - min_shared}. "
-        f"This likely means {fn2_name} is implemented via delegation to {fn1_name} "
+        f"Expected combined <= {n_fn1 + n_fn2 - min_shared}. "
+        f"This likely means {fn2_name} is implemented by delegating to {fn1_name} "
+        f"with transformed inputs"
     )

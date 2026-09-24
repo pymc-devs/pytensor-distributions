@@ -88,7 +88,7 @@ def logsf(x, mu, kappa):
 
 
 def isf(q, mu, kappa):
-    return ppf(1 - q, mu, kappa)
+    return 2 * mu - ppf(q, mu, kappa)
 
 
 def ppf(q, mu, kappa):

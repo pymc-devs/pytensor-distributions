@@ -7,6 +7,7 @@ from pytensor_distributions.helper import (
     discrete_mean,
     discrete_skewness,
     discrete_variance,
+    isf_bounds_disc,
     ppf_bounds_disc,
 )
 
@@ -51,7 +52,8 @@ def cdf(x, q, beta):
 
 
 def isf(x, q, beta):
-    return ppf(1 - x, q, beta)
+    x_val = pt.ceil((pt.log(x) / pt.log(q)) ** (1 / beta) - 1)
+    return isf_bounds_disc(x_val, x, 0, pt.inf)
 
 
 def pdf(x, q, beta):

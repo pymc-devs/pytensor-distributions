@@ -62,6 +62,34 @@ def isf_bounds_cont(x_val, q, lower, upper):
     return ppf_bounds_cont(x_val, q, upper, lower)
 
 
+def isf_bounds_disc(x_val, q, lower, upper):
+    """
+    Apply bounds checking for the inverse survival function of discrete distributions.
+
+    Parameters
+    ----------
+    x_val : tensor
+        The computed ISF value
+    q : tensor
+        Probability value (quantile) between 0 and 1
+    lower : int
+        Lower bound of the distribution support
+    upper : int
+        Upper bound of the distribution support
+
+    Returns
+    -------
+    tensor
+        ISF value with proper bounds: NaN for q outside [0,1],
+        upper for q=0, lower-1 for q=1, otherwise x_val
+    """
+    return pt.switch(
+        pt.or_(pt.lt(q, 0), pt.gt(q, 1)),
+        pt.nan,
+        pt.switch(pt.eq(q, 0), upper, pt.switch(pt.eq(q, 1), lower - 1, x_val)),
+    )
+
+
 def ppf_bounds_disc(x_val, q, lower, upper):
     """
     Apply bounds checking for the inverse CDF of discrete distributions.

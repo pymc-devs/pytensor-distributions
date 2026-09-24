@@ -1,6 +1,6 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import LOG2, SQRT2, cdf_bounds, ppf_bounds_cont
+from pytensor_distributions.helper import LOG2, SQRT2, cdf_bounds, isf_bounds_cont, ppf_bounds_cont
 
 
 def mean(mu, b):
@@ -72,7 +72,8 @@ def cdf(x, mu, b):
 
 
 def sf(x, mu, b):
-    return 1.0 - cdf(x, mu, b)
+    y = (x - mu) / b
+    return pt.switch(pt.ge(x, mu), 0.5 * pt.exp(-y), 1.0 - 0.5 * pt.exp(y))
 
 
 def ppf(q, mu, b):
@@ -81,7 +82,12 @@ def ppf(q, mu, b):
 
 
 def isf(q, mu, b):
-    return ppf(1.0 - q, mu, b)
+    result = pt.switch(
+        pt.gt(q, 0.5),
+        mu + b * pt.log(2.0 * (1.0 - q)),
+        mu - b * pt.log(2.0 * q),
+    )
+    return isf_bounds_cont(result, q, -pt.inf, pt.inf)
 
 
 def rvs(mu, b, size=None, random_state=None):
