@@ -1,6 +1,6 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import cdf_bounds, ppf_bounds_cont
+from pytensor_distributions.helper import LOG2, cdf_bounds, isf_bounds_cont, ppf_bounds_cont
 
 
 def mean(lam):
@@ -13,7 +13,7 @@ def mode(lam):
 
 
 def median(lam):
-    return pt.log(2.0) / lam
+    return LOG2 / lam
 
 
 def var(lam):
@@ -63,7 +63,7 @@ def cdf(x, lam):
 
 
 def isf(x, lam):
-    return ppf(1 - x, lam)
+    return isf_bounds_cont(-pt.log(x) / lam, x, 0.0, pt.inf)
 
 
 def pdf(x, lam):

@@ -1,16 +1,16 @@
 import pytensor.tensor as pt
 
 from pytensor_distributions import normal as Normal
-from pytensor_distributions.helper import logdiffexp, ppf_bounds_cont
+from pytensor_distributions.helper import LOG2, isf_bounds_cont, logdiffexp, ppf_bounds_cont
 from pytensor_distributions.lmoments import _lmoments
 
 
 def _phi(z):
-    return 0.5 * (1 + pt.erf(z / pt.sqrt(2.0)))
+    return 0.5 * (1 + pt.erf(z / 2**0.5))
 
 
 def _Phi_inv(p):
-    return pt.sqrt(2.0) * pt.erfinv(2 * p - 1)
+    return 2**0.5 * pt.erfinv(2 * p - 1)
 
 
 def _log_phi(z):
@@ -18,8 +18,8 @@ def _log_phi(z):
 
 
 def _alpha_beta(mu, sigma, lower, upper):
-    alpha_raw = (lower - mu) / sigma
-    beta_raw = (upper - mu) / sigma
+    alpha_raw = pt.as_tensor((lower - mu) / sigma)
+    beta_raw = pt.as_tensor((upper - mu) / sigma)
 
     alpha = pt.switch(pt.isinf(alpha_raw) & (alpha_raw < 0), -100.0, alpha_raw)
     beta = pt.switch(pt.isinf(beta_raw) & (beta_raw > 0), 100.0, beta_raw)
@@ -34,9 +34,9 @@ def _log_erfc(x):
 
 def _log_Z(alpha, beta):
     """Compute log(Phi(beta) - Phi(alpha)) robustly."""
-    a = alpha / pt.sqrt(2.0)
-    b = beta / pt.sqrt(2.0)
-    log_half = pt.log(0.5)
+    a = alpha / 2**0.5
+    b = beta / 2**0.5
+    log_half = -LOG2
 
     # Case 1: alpha > 0 (implies beta > 0). Upper tail.
     # Z = 0.5 * (erfc(a) - erfc(b)). a < b.
@@ -227,7 +227,7 @@ def logcdf(x, mu, sigma, lower, upper):
 
 
 def sf(x, mu, sigma, lower, upper):
-    return 1.0 - cdf(x, mu, sigma, lower, upper)
+    return pt.exp(logsf(x, mu, sigma, lower, upper))
 
 
 def logsf(x, mu, sigma, lower, upper):
@@ -255,10 +255,10 @@ def ppf(q, mu, sigma, lower, upper):
         return _Phi_inv(q * Z + _phi(alpha))
 
     def ppf_survival(q, alpha, beta):
-        sb = 0.5 * pt.erfc(beta / pt.sqrt(2.0))
-        sa = 0.5 * pt.erfc(alpha / pt.sqrt(2.0))
-        term = q * sb + (1 - q) * sa
-        return pt.sqrt(2.0) * pt.erfcinv(2 * term)
+        sb = 0.5 * pt.erfc(beta / 2**0.5)
+        sa = 0.5 * pt.erfc(alpha / 2**0.5)
+        term = sa + q * (sb - sa)
+        return 2**0.5 * pt.erfcinv(2 * term)
 
     result_standard = ppf_standard(q, alpha, beta)
     result_survival = ppf_survival(q, alpha, beta)
@@ -270,9 +270,20 @@ def ppf(q, mu, sigma, lower, upper):
 
 
 def isf(q, mu, sigma, lower, upper):
-    return ppf(1.0 - q, mu, sigma, lower, upper)
+    alpha, beta = _alpha_beta(mu, sigma, lower, upper)
+    sb = 0.5 * pt.erfc(beta / 2**0.5)
+    sa = 0.5 * pt.erfc(alpha / 2**0.5)
+    term = sb + q * (sa - sb)
+    result = mu + sigma * (2**0.5 * pt.erfcinv(2 * term))
+    return isf_bounds_cont(result, q, lower, upper)
 
 
 def rvs(mu, sigma, lower, upper, size=None, random_state=None):
+    bcast = pt.broadcast_arrays(mu, sigma, lower, upper)[0]
+    if size is None:
+        size = bcast.shape
+    else:
+        size = (size,) if isinstance(size, int) else tuple(size)
+        size = pt.broadcast_shape(pt.empty(size), bcast)
     u = pt.random.uniform(0, 1, size=size, rng=random_state, return_next_rng=True)[1]
     return ppf(u, mu, sigma, lower, upper)

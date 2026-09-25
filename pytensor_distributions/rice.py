@@ -9,7 +9,7 @@ from pytensor_distributions.helper import (
     marcum_q1_complement,
 )
 from pytensor_distributions.lmoments import _lmoments
-from pytensor_distributions.optimization import find_ppf
+from pytensor_distributions.optimization import find_isf, find_ppf
 
 
 def _laguerre_half(q):
@@ -123,7 +123,7 @@ def ppf(q, nu, sigma):
 
 
 def isf(q, nu, sigma):
-    return ppf(1.0 - q, nu, sigma)
+    return find_isf(q, mean(nu, sigma), 0, pt.inf, sf, pdf, nu, sigma)
 
 
 def rvs(nu, sigma, size=None, random_state=None):

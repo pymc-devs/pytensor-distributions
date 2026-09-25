@@ -1,6 +1,6 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import cdf_bounds, ppf_bounds_cont
+from pytensor_distributions.helper import LOG2, cdf_bounds, isf_bounds_cont, ppf_bounds_cont
 
 
 def mean(mu, beta):
@@ -43,7 +43,7 @@ def lmoment1(mu, beta):
 def lmoment2(mu, beta):
     shape = pt.broadcast_arrays(mu, beta)[0]
     # $\beta \ln 2$
-    return pt.full_like(shape, beta * 0.6931471805599453)
+    return pt.full_like(shape, beta * LOG2)
 
 
 def lmoment3(mu, beta):
@@ -69,7 +69,7 @@ def cdf(x, mu, beta):
 
 
 def isf(x, mu, beta):
-    return ppf(1 - x, mu, beta)
+    return isf_bounds_cont(mu - beta * pt.log(-pt.log1p(-x)), x, -pt.inf, pt.inf)
 
 
 def pdf(x, mu, beta):
@@ -86,9 +86,14 @@ def sf(x, mu, beta):
 
 
 def rvs(mu, beta, size=None, random_state=None):
-    return ppf(
-        pt.random.uniform(0, 1, rng=random_state, size=size, return_next_rng=True)[1], mu, beta
-    )
+    bcast = pt.broadcast_arrays(mu, beta)[0]
+    if size is None:
+        size = bcast.shape
+    else:
+        size = (size,) if isinstance(size, int) else tuple(size)
+        size = pt.broadcast_shape(pt.empty(size), bcast)
+    u = pt.random.uniform(0, 1, size=size, rng=random_state, return_next_rng=True)[1]
+    return ppf(u, mu, beta)
 
 
 def logcdf(x, mu, beta):

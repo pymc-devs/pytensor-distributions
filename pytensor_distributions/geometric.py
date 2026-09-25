@@ -1,6 +1,6 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import cdf_bounds, ppf_bounds_disc
+from pytensor_distributions.helper import cdf_bounds, isf_bounds_disc, ppf_bounds_disc, sf_bounds
 from pytensor_distributions.lmoments import _lmoments
 
 
@@ -70,11 +70,12 @@ def ppf(q, p):
 
 
 def sf(x, p):
-    return 1.0 - cdf(x, p)
+    return sf_bounds(pt.exp(pt.floor(x) * pt.log1p(-p)), x, 1, pt.inf)
 
 
 def isf(q, p):
-    return ppf(1.0 - q, p)
+    result = pt.ceil(pt.log(q) / pt.log1p(-p))
+    return isf_bounds_disc(result, q, 1, pt.inf)
 
 
 def rvs(p, size=None, random_state=None):
@@ -90,4 +91,4 @@ def logcdf(x, p):
 
 
 def logsf(x, p):
-    return pt.log1p(-cdf(x, p))
+    return pt.switch(pt.lt(x, 1), 0.0, pt.floor(x) * pt.log1p(-p))

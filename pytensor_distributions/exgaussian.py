@@ -1,10 +1,10 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import continuous_entropy, logdiffexp
+from pytensor_distributions.helper import SQRT2, continuous_entropy, logdiffexp
 from pytensor_distributions.lmoments import _lmoments
 from pytensor_distributions.normal import logcdf as normal_logcdf
 from pytensor_distributions.normal import logpdf as normal_logpdf
-from pytensor_distributions.optimization import find_ppf
+from pytensor_distributions.optimization import find_isf, find_ppf
 
 
 def mean(mu, sigma, nu):
@@ -15,7 +15,7 @@ def mode(mu, sigma, nu):
     tau = 1 / nu
     return (
         mu
-        - pt.sign(tau) * pt.sqrt(2) * sigma * pt.erfcinv(pt.abs(tau) / sigma * pt.sqrt(2 / pt.pi))
+        - pt.sign(tau) * SQRT2 * sigma * pt.erfcinv(pt.abs(tau) / sigma * pt.sqrt(2 / pt.pi))
         + sigma**2 / tau
     )
 
@@ -72,7 +72,7 @@ def cdf(x, mu, sigma, nu):
 
 
 def isf(x, mu, sigma, nu):
-    return ppf(1 - x, mu, sigma, nu)
+    return find_isf(x, mean(mu, sigma, nu), -pt.inf, pt.inf, sf, pdf, mu, sigma, nu)
 
 
 def pdf(x, mu, sigma, nu):

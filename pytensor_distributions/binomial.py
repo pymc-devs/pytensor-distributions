@@ -3,7 +3,7 @@ from pytensor.tensor.special import xlogy
 
 from pytensor_distributions.helper import cdf_bounds, discrete_entropy
 from pytensor_distributions.lmoments import _lmoments
-from pytensor_distributions.optimization import find_ppf_discrete
+from pytensor_distributions.optimization import find_isf_discrete, find_ppf_discrete
 
 
 def mean(n, p):
@@ -73,7 +73,7 @@ def sf(x, n, p):
 
 
 def isf(q, n, p):
-    return ppf(1.0 - q, n, p)
+    return find_isf_discrete(q, mean(n, p), 0, n, sf, pdf, n, p)
 
 
 def rvs(n, p, size=None, random_state=None):

@@ -1,6 +1,6 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import cdf_bounds, ppf_bounds_cont
+from pytensor_distributions.helper import LOG2, cdf_bounds, isf_bounds_cont, ppf_bounds_cont
 from pytensor_distributions.lmoments import _lmoments
 
 
@@ -52,7 +52,7 @@ def entropy(alpha, beta):
     h_regular = alpha - (alpha + 1.0) * pt.digamma(alpha) + pt.gammaln(alpha) + pt.log(beta)
 
     h_asymptotic = (
-        (1 - 3 * pt.log(alpha) + pt.log(2) + pt.log(pt.pi)) / 2
+        (1 - 3 * pt.log(alpha) + LOG2 + pt.log(pt.pi)) / 2
         + 2 / 3 * alpha**-1
         + alpha**-2 / 12
         - alpha**-3 / 90
@@ -67,7 +67,7 @@ def cdf(x, alpha, beta):
 
 
 def isf(x, alpha, beta):
-    return ppf(1 - x, alpha, beta)
+    return isf_bounds_cont(beta / pt.gammaincinv(alpha, x), x, 0, pt.inf)
 
 
 def pdf(x, alpha, beta):

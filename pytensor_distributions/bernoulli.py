@@ -1,7 +1,7 @@
 import pytensor.tensor as pt
 from pytensor.tensor.special import xlogy
 
-from pytensor_distributions.helper import cdf_bounds, ppf_bounds_disc
+from pytensor_distributions.helper import cdf_bounds, isf_bounds_disc, ppf_bounds_disc
 
 
 def mean(p):
@@ -72,7 +72,8 @@ def sf(x, p):
 
 
 def isf(q, p):
-    return ppf(1 - q, p)
+    x_val = pt.switch(pt.le(p, q), 0, 1)
+    return isf_bounds_disc(x_val, q, 0, 1)
 
 
 def pdf(x, p):

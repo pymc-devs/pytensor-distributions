@@ -1,4 +1,8 @@
+import numpy as np
 import pytensor.tensor as pt
+
+LOG2 = np.log(2.0)
+SQRT2 = 2.0**0.5
 
 
 def cdf_bounds(prob, x, lower, upper):
@@ -51,6 +55,38 @@ def ppf_bounds_cont(x_val, q, lower, upper):
         pt.or_(pt.lt(q, 0), pt.gt(q, 1)),
         pt.nan,
         pt.switch(pt.eq(q, 0), lower, pt.switch(pt.eq(q, 1), upper, x_val)),
+    )
+
+
+def isf_bounds_cont(x_val, q, lower, upper):
+    return ppf_bounds_cont(x_val, q, upper, lower)
+
+
+def isf_bounds_disc(x_val, q, lower, upper):
+    """
+    Apply bounds checking for the inverse survival function of discrete distributions.
+
+    Parameters
+    ----------
+    x_val : tensor
+        The computed ISF value
+    q : tensor
+        Probability value (quantile) between 0 and 1
+    lower : int
+        Lower bound of the distribution support
+    upper : int
+        Upper bound of the distribution support
+
+    Returns
+    -------
+    tensor
+        ISF value with proper bounds: NaN for q outside [0,1],
+        upper for q=0, lower-1 for q=1, otherwise x_val
+    """
+    return pt.switch(
+        pt.or_(pt.lt(q, 0), pt.gt(q, 1)),
+        pt.nan,
+        pt.switch(pt.eq(q, 0), upper, pt.switch(pt.eq(q, 1), lower - 1, x_val)),
     )
 
 
@@ -369,7 +405,7 @@ def von_mises_cdf(x, mu, kappa):
     # Normal approximation
     b = pt.sqrt(2 / pt.pi) / pt.ive(0.0, kappa_flat)  # (K,)
     z = b * pt.sin(pt.atleast_1d(x_wrapped) / 2.0)  # (N[, P], K)
-    cdf_norm = 0.5 * (1.0 + pt.erf(z / pt.sqrt(2.0)))[None]  # (1, N[, P], K)
+    cdf_norm = 0.5 * (1.0 + pt.erf(z / 2**0.5))[None]  # (1, N[, P], K)
 
     result = pt.switch(use_series, cdf_series, cdf_norm)
     result = result + ix
@@ -510,7 +546,7 @@ def ncx2_cdf(x, df, nc):
     # ncx2(df, nc) ~ N(df + nc, 2*(df + 2*nc)) for large nc
     mean_approx = df + nc
     std_approx = pt.sqrt(2 * (df + 2 * nc))
-    normal_result = 0.5 * (1 + pt.erf((x - mean_approx) / (std_approx * pt.sqrt(2))))
+    normal_result = 0.5 * (1 + pt.erf((x - mean_approx) / (std_approx * SQRT2)))
 
     # Use series for nc < 1000, normal approximation otherwise
     return pt.switch(pt.lt(nc, 1000), series_result, normal_result)

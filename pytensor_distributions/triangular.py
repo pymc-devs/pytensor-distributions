@@ -1,5 +1,6 @@
 import pytensor.tensor as pt
 
+from pytensor_distributions.helper import SQRT2
 from pytensor_distributions.lmoments import _lmoments
 
 
@@ -28,7 +29,7 @@ def std(lower, c, upper):
 
 
 def skewness(lower, c, upper):
-    num = pt.sqrt(2) * (lower + upper - 2 * c) * (2 * lower - upper - c) * (lower - 2 * upper + c)
+    num = SQRT2 * (lower + upper - 2 * c) * (2 * lower - upper - c) * (lower - 2 * upper + c)
     denom = 5 * pt.pow(lower**2 + upper**2 + c**2 - lower * c - c * upper - lower * upper, 1.5)
     return num / denom
 
@@ -98,11 +99,21 @@ def sf(x, lower, c, upper):
 
 
 def isf(q, lower, c, upper):
-    return ppf(1 - q, lower, c, upper)
+    return pt.switch(
+        pt.gt(q, (upper - c) / (upper - lower)),
+        lower + pt.sqrt((upper - lower) * (c - lower) * (1 - q)),
+        upper - pt.sqrt((upper - lower) * (upper - c) * q),
+    )
 
 
 def rvs(lower, c, upper, size=None, random_state=None):
-    u = pt.random.uniform(0.0, 1.0, size=size, rng=random_state, return_next_rng=True)[1]
+    bcast = pt.broadcast_arrays(lower, c, upper)[0]
+    if size is None:
+        u_size = bcast.shape
+    else:
+        size = (size,) if isinstance(size, int) else tuple(size)
+        u_size = pt.broadcast_shape(pt.empty(size), bcast)
+    u = pt.random.uniform(0.0, 1.0, size=u_size, rng=random_state, return_next_rng=True)[1]
     return ppf(u, lower, c, upper)
 
 

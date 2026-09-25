@@ -1,6 +1,8 @@
 import pytensor.tensor as pt
 from pytensor.tensor.math import gammaln
 
+from pytensor_distributions.helper import LOG2
+
 
 def mean(nu, V):
     return nu * V
@@ -31,11 +33,11 @@ def entropy(nu, V):
         pt.stack([gammaln((nu + 1 - i) / 2) for i in range(1, p + 1)]), axis=0
     )
 
-    exp_logdet_X = mvdigamma + p * pt.log(2) + logdet_V
+    exp_logdet_X = mvdigamma + p * LOG2 + logdet_V
 
     return (
         0.5 * nu * logdet_V
-        + 0.5 * nu * p * pt.log(2)
+        + 0.5 * nu * p * LOG2
         + mvgammaln
         - 0.5 * (nu - p - 1) * exp_logdet_X
         + 0.5 * nu * p
@@ -60,7 +62,7 @@ def logpdf(X, nu, V):
     result = (
         -log_gamma_p
         - 0.5 * nu * logdet_V
-        - 0.5 * nu * p * pt.log(2)
+        - 0.5 * nu * p * LOG2
         + 0.5 * (nu - p - 1) * logdet_X
         - 0.5 * trace_term
     )

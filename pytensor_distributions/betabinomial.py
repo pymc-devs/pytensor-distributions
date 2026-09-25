@@ -1,8 +1,8 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import cdf_bounds, discrete_entropy
+from pytensor_distributions.helper import cdf_bounds, discrete_entropy, sf_bounds
 from pytensor_distributions.lmoments import _lmoments
-from pytensor_distributions.optimization import find_ppf_discrete
+from pytensor_distributions.optimization import find_isf_discrete, find_ppf_discrete
 
 
 def mean(n, alpha, beta):
@@ -118,11 +118,18 @@ def ppf(q, n, alpha, beta):
 
 
 def sf(x, n, alpha, beta):
-    return 1 - cdf(x, n, alpha, beta)
+    broadcast_shape = pt.broadcast_arrays(x, n, alpha, beta)[0]
+    k_vals = pt.arange(0, pt.max(n) + 1)
+    k_broadcast = k_vals.reshape((-1,) + (1,) * broadcast_shape.ndim)
+
+    prob = pt.sum(
+        pt.where(pt.gt(k_broadcast, pt.floor(x)), pdf(k_broadcast, n, alpha, beta), 0.0), axis=0
+    )
+    return sf_bounds(prob, x, 0, n)
 
 
 def isf(x, n, alpha, beta):
-    return ppf(1 - x, n, alpha, beta)
+    return find_isf_discrete(x, mean(n, alpha, beta), 0, n, sf, pdf, n, alpha, beta)
 
 
 def rvs(n, alpha, beta, size=None, random_state=None):

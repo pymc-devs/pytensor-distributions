@@ -1,9 +1,10 @@
 import pytensor.tensor as pt
 
 from pytensor_distributions.halfnormal import entropy as halfnormal_entropy
+from pytensor_distributions.helper import SQRT2
 from pytensor_distributions.lmoments import _lmoments
 from pytensor_distributions.normal import entropy as normal_entropy
-from pytensor_distributions.optimization import find_ppf
+from pytensor_distributions.optimization import find_isf, find_ppf
 
 
 def mean(mu, sigma, alpha):
@@ -85,7 +86,7 @@ def logcdf(x, mu, sigma, alpha):
 
 
 def isf(x, mu, sigma, alpha):
-    return ppf(1 - x, mu, sigma, alpha)
+    return find_isf(x, mean(mu, sigma, alpha), -pt.inf, pt.inf, sf, pdf, mu, sigma, alpha)
 
 
 def pdf(x, mu, sigma, alpha):
@@ -114,7 +115,7 @@ def rvs(mu, sigma, alpha, size=None, random_state=None):
 def logpdf(x, mu, sigma, alpha):
     tau = 1.0 / (sigma**2)
     return (
-        pt.log(1 + pt.erf(((x - mu) * pt.sqrt(tau) * alpha) / pt.sqrt(2)))
+        pt.log(1 + pt.erf(((x - mu) * pt.sqrt(tau) * alpha) / SQRT2))
         + (-tau * (x - mu) ** 2 + pt.log(tau / pt.pi / 2.0)) / 2.0
     )
 

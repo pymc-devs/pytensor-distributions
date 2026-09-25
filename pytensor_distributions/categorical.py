@@ -1,7 +1,7 @@
 import pytensor.tensor as pt
 from pytensor.tensor.special import xlogy
 
-from pytensor_distributions.helper import cdf_bounds, ppf_bounds_disc
+from pytensor_distributions.helper import cdf_bounds, isf_bounds_disc, ppf_bounds_disc
 
 
 def _normalize_p(p):
@@ -109,7 +109,15 @@ def ppf(q, p):
 
 
 def isf(q, p):
-    return ppf(1.0 - q, p)
+    p = _normalize_p(p)
+    k = _k(p)
+    q = pt.as_tensor_variable(q)
+    cumsum_p = pt.cumsum(p, axis=-1)
+    tail = 1 - cumsum_p
+    le_mask = pt.le(tail, pt.shape_padright(q))
+    masked_indices = pt.switch(le_mask, pt.arange(k), k)
+    result = pt.min(masked_indices, axis=-1)
+    return isf_bounds_disc(result, q, 0, k - 1)
 
 
 def rvs(p, size=None, random_state=None):

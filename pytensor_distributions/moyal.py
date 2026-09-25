@@ -1,11 +1,11 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import ppf_bounds_cont
+from pytensor_distributions.helper import LOG2, isf_bounds_cont, ppf_bounds_cont
 from pytensor_distributions.lmoments import _lmoments
 
 
 def mean(mu, sigma):
-    return mu + sigma * (pt.euler_gamma + pt.log(2))
+    return mu + sigma * (pt.euler_gamma + LOG2)
 
 
 def mode(mu, sigma):
@@ -59,7 +59,7 @@ def entropy(mu, sigma):
 
 def cdf(x, mu, sigma):
     z_val = (x - mu) / sigma
-    return 1 - pt.erf(pt.exp(-z_val / 2) * (2**-0.5))
+    return pt.erfc(pt.exp(-z_val / 2) * (2**-0.5))
 
 
 def pdf(x, mu, sigma):
@@ -67,26 +67,34 @@ def pdf(x, mu, sigma):
 
 
 def ppf(q, mu, sigma):
-    x_val = sigma * -pt.log(2.0 * pt.erfinv(1 - q) ** 2) + mu
+    x_val = sigma * -pt.log(2.0 * pt.erfcinv(q) ** 2) + mu
     return ppf_bounds_cont(x_val, q, -pt.inf, pt.inf)
 
 
 def sf(x, mu, sigma):
-    return 1 - cdf(x, mu, sigma)
+    z_val = (x - mu) / sigma
+    return pt.erf(pt.exp(-z_val / 2) * (2**-0.5))
 
 
 def isf(x, mu, sigma):
-    return ppf(1 - x, mu, sigma)
+    x_val = sigma * -pt.log(2.0 * pt.erfinv(x) ** 2) + mu
+    return isf_bounds_cont(x_val, x, -pt.inf, pt.inf)
 
 
 def rvs(mu, sigma, size=None, random_state=None):
-    u = pt.random.uniform(size=size, rng=random_state, return_next_rng=True)[1]
+    bcast = pt.broadcast_arrays(mu, sigma)[0]
+    if size is None:
+        u_size = bcast.shape
+    else:
+        size = (size,) if isinstance(size, int) else tuple(size)
+        u_size = pt.broadcast_shape(pt.empty(size), bcast)
+    u = pt.random.uniform(size=u_size, rng=random_state, return_next_rng=True)[1]
     return ppf(u, mu, sigma)
 
 
 def logcdf(x, mu, sigma):
     z_val = (x - mu) / sigma
-    return pt.log(1 - pt.erf(pt.exp(-z_val / 2) * (2**-0.5)))
+    return pt.log(pt.erfc(pt.exp(-z_val / 2) * (2**-0.5)))
 
 
 def logpdf(x, mu, sigma):

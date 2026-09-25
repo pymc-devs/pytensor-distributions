@@ -2,7 +2,7 @@ import pytensor.tensor as pt
 from pytensor.tensor.special import gamma
 
 from pytensor_distributions import weibull
-from pytensor_distributions.helper import ppf_bounds_cont
+from pytensor_distributions.helper import LOG2, ppf_bounds_cont
 
 
 def mean(alpha, sigma):
@@ -49,7 +49,7 @@ def mode(alpha, sigma):
 
 
 def median(alpha, sigma):
-    return sigma * pt.log(2) ** (-1 / alpha)
+    return sigma * LOG2 ** (-1 / alpha)
 
 
 def entropy(alpha, sigma):

@@ -1,6 +1,6 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import ppf_bounds_cont
+from pytensor_distributions.helper import isf_bounds_cont, ppf_bounds_cont
 
 
 def mean(mu, b, kappa):
@@ -103,11 +103,28 @@ def pdf(x, mu, b, kappa):
 
 
 def sf(x, mu, b, kappa):
-    return 1 - cdf(x, mu, b, kappa)
+    x_norm = (x - mu) / b
+    kap_inv = 1 / kappa
+    kap_kapinv = kappa + kap_inv
+
+    return pt.switch(
+        pt.ge(x_norm, 0),
+        pt.exp(-x_norm * kappa) * (kap_inv / kap_kapinv),
+        1 - pt.exp(x_norm * kap_inv) * (kappa / kap_kapinv),
+    )
 
 
 def isf(x, mu, b, kappa):
-    return ppf(1 - x, mu, b, kappa)
+    kap_inv = 1 / kappa
+    kap_kapinv = kappa + kap_inv
+
+    x_isf = pt.switch(
+        pt.le(x, kap_inv / kap_kapinv),
+        -pt.log(x * kap_kapinv * kappa) * kap_inv,
+        pt.log((1 - x) * kap_kapinv / kappa) * kappa,
+    )
+
+    return isf_bounds_cont(x_isf * b + mu, x, -pt.inf, pt.inf)
 
 
 def rvs(mu, b, kappa, size=None, random_state=None):

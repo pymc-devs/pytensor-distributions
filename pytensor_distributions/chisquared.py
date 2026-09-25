@@ -1,7 +1,7 @@
 import pytensor.tensor as pt
 from pytensor.tensor.special import xlogy
 
-from pytensor_distributions.helper import cdf_bounds, ppf_bounds_cont
+from pytensor_distributions.helper import LOG2, cdf_bounds, isf_bounds_cont, ppf_bounds_cont
 from pytensor_distributions.lmoments import _lmoments
 
 
@@ -51,7 +51,7 @@ def lmoment4(nu):
 
 def entropy(nu):
     h_nu = nu / 2
-    return h_nu + pt.log(2) + pt.gammaln(h_nu) + (1 - h_nu) * pt.digamma(h_nu)
+    return h_nu + LOG2 + pt.gammaln(h_nu) + (1 - h_nu) * pt.digamma(h_nu)
 
 
 def cdf(x, nu):
@@ -87,7 +87,7 @@ def logpdf(x, nu):
     return pt.switch(
         pt.lt(x, 0),
         -pt.inf,
-        xlogy(nu / 2 - 1, x) - x / 2 - pt.gammaln(nu / 2) - (nu * pt.log(2)) / 2,
+        xlogy(nu / 2 - 1, x) - x / 2 - pt.gammaln(nu / 2) - (nu * LOG2) / 2,
     )
 
 
@@ -96,7 +96,8 @@ def sf(x, nu):
 
 
 def isf(x, nu):
-    return ppf(1 - x, nu)
+    vals = 2 * pt.gammainccinv(nu / 2, x)
+    return isf_bounds_cont(vals, x, 0, pt.inf)
 
 
 def logsf(x, nu):

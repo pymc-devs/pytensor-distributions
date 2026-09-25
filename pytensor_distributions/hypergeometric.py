@@ -1,8 +1,8 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import cdf_bounds, discrete_entropy
+from pytensor_distributions.helper import cdf_bounds, discrete_entropy, sf_bounds
 from pytensor_distributions.lmoments import _lmoments
-from pytensor_distributions.optimization import find_ppf_discrete
+from pytensor_distributions.optimization import find_isf_discrete, find_ppf_discrete
 
 
 def _support_lower(N, k, n):
@@ -112,11 +112,23 @@ def logcdf(x, N, k, n):
 
 
 def sf(x, N, k, n):
-    return 1.0 - cdf(x, N, k, n)
+    lower = _support_lower(N, k, n)
+    upper = _support_upper(N, k, n)
+    x = pt.as_tensor_variable(x)
+    x_floor = pt.floor(x)
+    safe_x = pt.clip(x_floor, 0, upper)
+    safe_x = pt.switch(pt.isnan(x), 0, safe_x)
+    x_vals = pt.arange(0, pt.cast(upper + 1, "int64"))
+    pmf_vals = pt.exp(logpdf(x_vals, N, k, n))
+    rcum = pt.concatenate([pt.cumsum(pmf_vals[::-1])[::-1], pt.zeros(1)])
+    x_idx = pt.cast(safe_x, "int64") + 1
+    raw_sf = rcum[pt.clip(x_idx, 0, pt.cast(upper + 1, "int64"))]
+    raw_sf = pt.switch(pt.isnan(x), pt.nan, raw_sf)
+    return sf_bounds(raw_sf, x, lower, upper)
 
 
 def logsf(x, N, k, n):
-    return pt.log1p(-cdf(x, N, k, n))
+    return pt.log(sf(x, N, k, n))
 
 
 def ppf(q, N, k, n):
@@ -126,7 +138,9 @@ def ppf(q, N, k, n):
 
 
 def isf(q, N, k, n):
-    return ppf(1.0 - q, N, k, n)
+    lower = _support_lower(N, k, n)
+    upper = _support_upper(N, k, n)
+    return find_isf_discrete(q, mean(N, k, n), lower, upper, sf, pdf, N, k, n)
 
 
 def rvs(N, k, n, size=None, random_state=None):

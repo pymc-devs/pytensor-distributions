@@ -7,6 +7,7 @@ from pytensor_distributions.helper import (
     discrete_mean,
     discrete_skewness,
     discrete_variance,
+    isf_bounds_disc,
     ppf_bounds_disc,
 )
 
@@ -42,7 +43,7 @@ def kurtosis(q, beta):
 def entropy(q, beta):
     # discrete Weibull can have very heavy tails, so we limit the upper bound
     # we may want to find a better way to handle this
-    upper = pt.min([ppf(0.9999, q, beta), 1e4])
+    upper = pt.minimum(ppf(0.9999, q, beta), 1e4)
     return discrete_entropy(0, upper, logpdf, q, beta)
 
 
@@ -51,7 +52,8 @@ def cdf(x, q, beta):
 
 
 def isf(x, q, beta):
-    return ppf(1 - x, q, beta)
+    x_val = pt.ceil((pt.log(x) / pt.log(q)) ** (1 / beta) - 1)
+    return isf_bounds_disc(x_val, x, 0, pt.inf)
 
 
 def pdf(x, q, beta):
@@ -76,9 +78,14 @@ def sf(x, q, beta):
 
 
 def rvs(q, beta, size=None, random_state=None):
-    return ppf(
-        pt.random.uniform(0, 1, rng=random_state, size=size, return_next_rng=True)[1], q, beta
-    )
+    bcast = pt.broadcast_arrays(q, beta)[0]
+    if size is None:
+        size = bcast.shape
+    else:
+        size = (size,) if isinstance(size, int) else tuple(size)
+        size = pt.broadcast_shape(pt.empty(size), bcast)
+    u = pt.random.uniform(0, 1, size=size, rng=random_state, return_next_rng=True)[1]
+    return ppf(u, q, beta)
 
 
 def logcdf(x, q, beta):

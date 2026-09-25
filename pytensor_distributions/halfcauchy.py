@@ -1,6 +1,6 @@
 import pytensor.tensor as pt
 
-from pytensor_distributions.helper import ppf_bounds_cont
+from pytensor_distributions.helper import LOG2, isf_bounds_cont, ppf_bounds_cont
 
 
 def mean(beta):
@@ -69,7 +69,7 @@ def logcdf(x, beta):
 
 
 def isf(x, beta):
-    return ppf(1 - x, beta)
+    return isf_bounds_cont(beta / pt.tan(pt.pi / 2 * x), x, 0, pt.inf)
 
 
 def pdf(x, beta):
@@ -86,14 +86,20 @@ def sf(x, beta):
 
 
 def rvs(beta, size=None, random_state=None):
-    uniform_samples = pt.random.uniform(0, 1, rng=random_state, size=size, return_next_rng=True)[1]
+    beta = pt.as_tensor(beta)
+    if size is None:
+        u_size = beta.shape
+    else:
+        size = (size,) if isinstance(size, int) else tuple(size)
+        u_size = pt.broadcast_shape(pt.empty(size), beta)
+    uniform_samples = pt.random.uniform(0, 1, rng=random_state, size=u_size, return_next_rng=True)[
+        1
+    ]
     return beta * pt.tan(pt.pi / 2 * uniform_samples)
 
 
 def logpdf(x, beta):
-    return pt.where(
-        pt.lt(x, 0), -pt.inf, pt.log(2) - pt.log(pt.pi * beta) - pt.log(1 + (x / beta) ** 2)
-    )
+    return pt.where(pt.lt(x, 0), -pt.inf, LOG2 - pt.log(pt.pi * beta) - pt.log(1 + (x / beta) ** 2))
 
 
 def logsf(x, beta):
