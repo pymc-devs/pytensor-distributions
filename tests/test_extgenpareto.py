@@ -1,0 +1,526 @@
+"""Tests for the Extended Generalized Pareto distribution."""
+
+from decimal import Decimal, getcontext
+
+import numpy as np
+import pytensor
+import pytensor.tensor as pt
+import pytest
+import scipy.stats.distributions as sp
+from scipy import integrate, stats
+from scipy.special import expit
+
+from pytensor_distributions import extgenpareto as ExtGenPareto
+from pytensor_distributions import genpareto as GenPareto
+
+
+def _compile_scalar(fn, n):
+    """Compile ``fn(x, *params)`` for scalar inputs (used by the quad moment checks)."""
+    x = pt.dscalar("x")
+    ps = [pt.dscalar(f"p{i}") for i in range(n)]
+    return pytensor.function([x, *ps], fn(x, *ps), on_unused_input="ignore")
+
+
+def _stat(fn, *params):
+    return float(fn(*[pt.constant(v, dtype="float64") for v in params]).eval())
+
+
+_MOMENT_CASES = [
+    (0.0, 1.0, 0.1, 2.0),
+    (0.0, 1.0, 0.2, 0.5),
+    (1.0, 2.0, -0.2, 3.0),
+    (0.0, 1.0, -0.3, 0.7),
+    (0.0, 1.0, 0.0, 2.0),  # xi = 0: exponential-tail limit
+    (1.0, 2.0, 0.0, 0.5),
+]
+
+
+@pytest.mark.parametrize("mu, sigma, xi, kappa", _MOMENT_CASES)
+def test_moments_match_numerical_integration(mu, sigma, xi, kappa):
+    """mean/var/std/skewness/kurtosis/entropy/median against quadrature of the pdf."""
+    pdf = _compile_scalar(ExtGenPareto.pdf, 4)
+    logpdf = _compile_scalar(ExtGenPareto.logpdf, 4)
+    upper = mu - sigma / xi if xi < 0 else np.inf
+    raw = [
+        integrate.quad(
+            lambda x, r=r: (x - mu) ** r * pdf(x, mu, sigma, xi, kappa), mu, upper, limit=200
+        )[0]
+        for r in range(1, 5)
+    ]
+    m1, m2, m3, m4 = raw
+    var_q = m2 - m1**2
+    central3 = m3 - 3 * m1 * m2 + 2 * m1**3
+    central4 = m4 - 4 * m1 * m3 + 6 * m1**2 * m2 - 3 * m1**4
+    entropy_q = integrate.quad(
+        lambda x: -pdf(x, mu, sigma, xi, kappa) * logpdf(x, mu, sigma, xi, kappa),
+        mu,
+        upper,
+        limit=200,
+    )[0]
+    assert np.isclose(_stat(ExtGenPareto.mean, mu, sigma, xi, kappa), mu + m1, rtol=1e-5)
+    assert np.isclose(_stat(ExtGenPareto.var, mu, sigma, xi, kappa), var_q, rtol=1e-5)
+    assert np.isclose(_stat(ExtGenPareto.std, mu, sigma, xi, kappa), np.sqrt(var_q), rtol=1e-5)
+    assert np.isclose(
+        _stat(ExtGenPareto.skewness, mu, sigma, xi, kappa), central3 / var_q**1.5, rtol=1e-4
+    )
+    assert np.isclose(
+        _stat(ExtGenPareto.kurtosis, mu, sigma, xi, kappa), central4 / var_q**2 - 3, rtol=1e-4
+    )
+    assert np.isclose(_stat(ExtGenPareto.entropy, mu, sigma, xi, kappa), entropy_q, rtol=1e-5)
+    ppf_half = float(
+        ExtGenPareto.ppf(pt.constant(0.5), *[pt.constant(v) for v in (mu, sigma, xi, kappa)]).eval()
+    )
+    assert np.isclose(_stat(ExtGenPareto.median, mu, sigma, xi, kappa), ppf_half, rtol=1e-6)
+
+
+@pytest.mark.parametrize(
+    "mu, sigma, xi", [(0.0, 1.0, 0.1), (2.0, 0.5, -0.3), (0.0, 2.0, 0.2), (0.0, 1.0, 0.0)]
+)
+def test_lmoments_reduce_to_gpd_at_kappa_one(mu, sigma, xi):
+    """At kappa = 1 the ExtGPD L-moments collapse onto the plain GPD's."""
+    for ext, gpd in [
+        (ExtGenPareto.lmoment2, GenPareto.lmoment2),
+        (ExtGenPareto.lmoment3, GenPareto.lmoment3),
+        (ExtGenPareto.lmoment4, GenPareto.lmoment4),
+    ]:
+        assert np.isclose(_stat(ext, mu, sigma, xi, 1.0), _stat(gpd, mu, sigma, xi), rtol=1e-10)
+
+
+@pytest.mark.parametrize(
+    "mu, sigma, xi, kappa", [(0.0, 1.0, 0.1, 2.0), (0.0, 1.0, -0.3, 0.7), (0.0, 1.0, 0.0, 2.0)]
+)
+def test_lmoments_match_sample(mu, sigma, xi, kappa):
+    """Closed-form L-moments against sample L-moments (scipy.stats.lmoment)."""
+    rng = pt.random.default_rng(42)
+    params = [pt.constant(v) for v in (mu, sigma, xi, kappa)]
+    data = ExtGenPareto.rvs(*params, size=80_000, random_state=rng).eval()
+    s_l2, s_tau3, s_tau4 = stats.lmoment(data, order=[2, 3, 4])
+    assert np.isclose(
+        _stat(ExtGenPareto.lmoment2, mu, sigma, xi, kappa), s_l2, rtol=5e-2, atol=5e-2
+    )
+    assert np.isclose(
+        _stat(ExtGenPareto.lmoment3, mu, sigma, xi, kappa), s_tau3, rtol=5e-2, atol=5e-2
+    )
+    assert np.isclose(
+        _stat(ExtGenPareto.lmoment4, mu, sigma, xi, kappa), s_tau4, rtol=5e-2, atol=5e-2
+    )
+
+
+@pytest.mark.parametrize(
+    "mu, sigma, xi, kappa", [(0.0, 1.0, 0.1, 3.0), (0.0, 1.0, -0.2, 2.5), (0.0, 1.0, 0.1, 0.6)]
+)
+def test_mode_is_the_global_maximum(mu, sigma, xi, kappa):
+    """The grid mode carries (within 1%) the largest density over a fine grid."""
+    pdf = _compile_scalar(ExtGenPareto.pdf, 4)
+    m = _stat(ExtGenPareto.mode, mu, sigma, xi, kappa)
+    upper = _stat(ExtGenPareto.ppf, 0.999, mu, sigma, xi, kappa)
+    grid = np.linspace(mu + 1e-6, upper, 4000)
+    grid_max = max(pdf(x, mu, sigma, xi, kappa) for x in grid)
+    assert pdf(m, mu, sigma, xi, kappa) >= 0.99 * grid_max
+
+
+@pytest.mark.parametrize("xi", [-2.0, -1.5, -1.0, -0.5, 0.0, 0.3])
+def test_mode_matches_genpareto_at_kappa_one(xi):
+    """At kappa = 1 the ExtGPD mode collapses onto the GPD mode.
+
+    This includes xi < -1 (the diverging finite endpoint), which a plain interior grid
+    search would miss.
+    """
+    ext = _stat(ExtGenPareto.mode, 0.0, 1.0, xi, 1.0)
+    gpd = _stat(GenPareto.mode, 0.0, 1.0, xi)
+    assert np.isclose(ext, gpd, rtol=1e-9, atol=1e-9)
+
+
+@pytest.mark.parametrize("bad", ["sigma", "kappa"])
+def test_invalid_params_give_nonfinite_logpdf(bad):
+    """Invalid sigma/kappa give a non-finite logpdf, never a plausible density.
+
+    Parameter validation is the consuming wrapper's job (e.g. pymc's check_parameters).
+    """
+    mu, sigma, xi, kappa = 0.0, 1.0, 0.2, 1.5
+    if bad == "sigma":
+        sigma = -1.0
+    else:
+        kappa = -0.5
+    assert not np.isfinite(_stat(ExtGenPareto.logpdf, 0.5, mu, sigma, xi, kappa))
+
+
+@pytest.mark.parametrize(
+    "mu, sigma, xi, kappa", [(0.0, 1.0, 0.2, 1.5), (0.0, 1.0, -0.3, 0.7), (0.0, 1.0, 0.1, 3.0)]
+)
+def test_ppf_logit_matches_ppf_expit_and_round_trips(mu, sigma, xi, kappa):
+    params = [pt.constant(v, dtype="float64") for v in (mu, sigma, xi, kappa)]
+    y = np.array([-6.0, -2.0, 0.0, 2.0, 6.0])
+    np.testing.assert_allclose(
+        ExtGenPareto.ppf_logit(y, *params).eval(),
+        ExtGenPareto.ppf(expit(y), *params).eval(),
+        rtol=1e-8,
+    )
+    # forward (logit-CDF = logcdf - logsf) then ppf_logit recovers x
+    x = mu + sigma * np.array([0.1, 0.7, 2.0])
+    logit_F = (ExtGenPareto.logcdf(x, *params) - ExtGenPareto.logsf(x, *params)).eval()
+    np.testing.assert_allclose(ExtGenPareto.ppf_logit(logit_F, *params).eval(), x, rtol=1e-7)
+
+
+def test_ppf_logit_is_stable_in_the_upper_tail():
+    params = [pt.constant(v) for v in (0.0, 1.0, 0.2, 2.0)]  # unbounded
+    y = np.array([40.0, 80.0, 120.0])  # expit(y) rounds to 1.0, so ppf(expit(y)) would saturate
+    xt = ExtGenPareto.ppf_logit(y, *params).eval()
+    assert np.all(np.isfinite(xt))
+    assert np.all(np.diff(xt) > 0)
+
+
+def ref_ext_logpdf(value, mu, sigma, xi, kappa):
+    z = (value - mu) / sigma
+    if z < 0 or (1 + xi * z) <= 0:
+        return -np.inf
+    log_H = sp.genpareto.logcdf(z, c=xi)
+    log_h = sp.genpareto.logpdf(z, c=xi) - np.log(sigma)
+    return np.log(kappa) + (kappa - 1) * log_H + log_h
+
+
+def ref_ext_logcdf(value, mu, sigma, xi, kappa):
+    z = (value - mu) / sigma
+    if z < 0:
+        return -np.inf
+    if xi < 0 and (1 + xi * z) <= 0:
+        return 0.0
+    return kappa * sp.genpareto.logcdf(z, c=xi)
+
+
+def ref_ext_logsf(value, mu, sigma, xi, kappa):
+    z = (value - mu) / sigma
+    if z < 0:
+        return 0.0
+    if xi < 0 and (1 + xi * z) <= 0:
+        return -np.inf
+    return np.log(-np.expm1(kappa * sp.genpareto.logcdf(z, c=xi)))
+
+
+def ref_ext_ppf(q, mu, sigma, xi, kappa):
+    return sp.genpareto.ppf(q ** (1 / kappa), c=xi, loc=mu, scale=sigma)
+
+
+def _gpd_ref_logp(value, mu, sigma, xi, kappa):
+    """100-digit ExtGPD logp from the exact margin ``s = 1 + xi*z``."""
+    getcontext().prec = 100
+    z = (Decimal(value) - mu) / sigma
+    log_s = (1 + xi * z).ln()
+    logp = -sigma.ln() - (1 + 1 / xi) * log_s
+    log_H = (1 - ((Decimal(-1) / xi) * log_s).exp()).ln()
+    return logp + kappa.ln() + (kappa - 1) * log_H
+
+
+def _gpd_ref_grad(value, params, which):
+    """High-precision central difference d logp / d ``which``."""
+    h = abs(params[which]) * Decimal("1e-22") or Decimal("1e-22")
+    hi = dict(params, **{which: params[which] + h})
+    lo = dict(params, **{which: params[which] - h})
+    return (_gpd_ref_logp(value, **hi) - _gpd_ref_logp(value, **lo)) / (2 * h)
+
+
+def _ext_gpd_excess_ref(y, kappa):
+    """High-precision GPD excess m = -log(1 - sigmoid(y) ** (1/kappa)) at xi = 0."""
+    getcontext().prec = 500
+    y, kappa = Decimal(y), Decimal(kappa)
+    log_sigmoid = -(1 + (-y).exp()).ln()
+    return float(-(1 - (log_sigmoid / kappa).exp()).ln())
+
+
+def test_functional_api_is_self_consistent():
+    x = np.array([0.3, 1.0, 3.0])
+    params = (0.0, 1.0, 0.2, 1.5)
+
+    np.testing.assert_allclose(
+        ExtGenPareto.cdf(x, *params).eval(), np.exp(ExtGenPareto.logcdf(x, *params).eval())
+    )
+    np.testing.assert_allclose(
+        ExtGenPareto.pdf(x, *params).eval(), np.exp(ExtGenPareto.logpdf(x, *params).eval())
+    )
+    np.testing.assert_allclose(
+        ExtGenPareto.sf(x, *params).eval(), np.exp(ExtGenPareto.logsf(x, *params).eval())
+    )
+    np.testing.assert_allclose(
+        ExtGenPareto.cdf(x, *params).eval() + ExtGenPareto.sf(x, *params).eval(),
+        1.0,
+        atol=1e-9,
+    )
+
+    q = np.array([0.1, 0.5, 0.9])
+    np.testing.assert_allclose(
+        ExtGenPareto.isf(q, *params).eval(), ExtGenPareto.ppf(1 - q, *params).eval()
+    )
+    assert np.all(np.isnan(ExtGenPareto.ppf(np.array([-0.1, 1.1]), *params).eval()))
+    np.testing.assert_allclose(float(ExtGenPareto.ppf(0.0, *params).eval()), 0.0)
+
+
+def test_isf_keeps_the_upper_tail():
+    # isf uses log1p(-x) (= log F) directly; ppf(1 - x) forms 1 - x first and loses the tiny
+    # survival x in the heavy upper tail. For xi = 0 the deep-tail isf is -log(x) + log(kappa);
+    # the direct route tracks it (rtol covers the O(x) asymptotic gap at x = 1e-8) while the naive
+    # ppf(1 - x) drifts off (~8e-4 at x = 1e-15).
+    x = np.array([1e-8, 1e-12, 1e-15])
+    for kappa in (0.5, 2.0, 10.0):
+        ref = -np.log(x) + np.log(kappa)
+        isf_val = ExtGenPareto.isf(x, 0.0, 1.0, 0.0, kappa).eval()
+        np.testing.assert_allclose(isf_val, ref, rtol=1e-9)
+        naive = ExtGenPareto.ppf(1 - x, 0.0, 1.0, 0.0, kappa).eval()
+        assert abs(isf_val[-1] - ref[-1]) < abs(naive[-1] - ref[-1])
+
+
+def test_rvs_shape_dtype_and_random_state():
+    params = (0.0, 1.0, 0.2, 1.5)
+    draws = ExtGenPareto.rvs(
+        *params, size=(4, 3), random_state=pytensor.shared(np.random.default_rng(0))
+    )
+    out = draws.eval()
+    assert out.shape == (4, 3) and out.dtype == np.float64
+    assert np.all(out >= 0.0)
+
+    same = ExtGenPareto.rvs(
+        *params, size=(4, 3), random_state=pytensor.shared(np.random.default_rng(0))
+    ).eval()
+    diff = ExtGenPareto.rvs(
+        *params, size=(4, 3), random_state=pytensor.shared(np.random.default_rng(9))
+    ).eval()
+    np.testing.assert_array_equal(out, same)
+    assert not np.array_equal(out, diff)
+
+
+@pytest.mark.parametrize(
+    "mu, sigma, xi, kappa",
+    [
+        (0.0, 1.0, -0.3, 0.5),
+        (0.0, 1.0, 0.0, 2.0),
+        (1.0, 2.0, 0.4, 3.0),
+    ],
+)
+def test_logpdf_logcdf_logsf_ppf_match_references(mu, sigma, xi, kappa):
+    upper = mu - sigma / xi if xi < 0 else 10.0
+    x = np.linspace(mu + 0.05, upper - 0.05 if xi < 0 else upper, 20)
+    q = np.array([0.1, 0.5, 0.9])
+
+    np.testing.assert_allclose(
+        ExtGenPareto.logpdf(x, mu, sigma, xi, kappa).eval(),
+        [ref_ext_logpdf(v, mu, sigma, xi, kappa) for v in x],
+        rtol=1e-8,
+        atol=1e-8,
+    )
+    np.testing.assert_allclose(
+        ExtGenPareto.logcdf(x, mu, sigma, xi, kappa).eval(),
+        [ref_ext_logcdf(v, mu, sigma, xi, kappa) for v in x],
+        rtol=1e-8,
+    )
+    np.testing.assert_allclose(
+        ExtGenPareto.logsf(x, mu, sigma, xi, kappa).eval(),
+        [ref_ext_logsf(v, mu, sigma, xi, kappa) for v in x],
+        rtol=1e-8,
+    )
+    np.testing.assert_allclose(
+        ExtGenPareto.ppf(q, mu, sigma, xi, kappa).eval(),
+        ref_ext_ppf(q, mu, sigma, xi, kappa),
+        rtol=1e-10,
+    )
+
+
+def test_logpdf_logcdf_at_infinity():
+    x = pt.constant(np.inf)
+    xi = pt.constant(np.array([-0.5, 0.0, 0.5]))
+    assert np.all(ExtGenPareto.logpdf(x, 0.0, 1.0, xi, 2.0).eval() == -np.inf)
+    assert np.all(ExtGenPareto.logcdf(x, 0.0, 1.0, xi, 2.0).eval() == 0.0)
+
+
+def test_ppf_endpoints():
+    xi = np.array([-0.5, 0.0, 0.5])
+    kappa = np.array([2.0, 0.5, 3.0])
+    with np.errstate(divide="ignore"):
+        expected_hi = np.where(xi < 0, 1.0 - 2.0 / xi, np.inf)
+    assert np.all(ExtGenPareto.ppf(0.0, 1.0, 2.0, xi, kappa).eval() == 1.0)
+    np.testing.assert_allclose(ExtGenPareto.ppf(1.0, 1.0, 2.0, xi, kappa).eval(), expected_hi)
+
+
+def test_ppf_outside_unit_interval_is_nan():
+    for q in (-0.1, 1.1):
+        assert np.isnan(ExtGenPareto.ppf(q, 0.0, 1.0, 0.2, 2.0).eval())
+
+
+def test_logsf_reduces_to_gpd_at_kappa_one():
+    value = np.linspace(0.05, 8.0, 40)
+    for xi in (-0.3, 0.0, 0.4):
+        ext = ExtGenPareto.logsf(value, 0.0, 1.5, xi, 1.0).eval()
+        gpd = GenPareto.logsf(value, 0.0, 1.5, xi).eval()
+        np.testing.assert_allclose(ext, gpd, rtol=1e-12, atol=1e-12)
+
+
+def test_kappa_one_equals_gpd():
+    value = np.linspace(0.0, 8.0, 60)
+    for xi in (-0.3, -1e-8, 0.0, 0.25, 0.8):
+        ext = ExtGenPareto.logpdf(value, 0.0, 1.5, xi, 1.0).eval()
+        gpd = GenPareto.logpdf(value, 0.0, 1.5, xi).eval()
+        np.testing.assert_allclose(ext, gpd, rtol=1e-12, atol=1e-12)
+
+
+def test_rvs_matches_distribution():
+    for xi, kappa in ((-0.2, 0.5), (0.0, 2.0), (0.3, 3.0)):
+        draws = ExtGenPareto.rvs(
+            0.0, 1.0, xi, kappa, size=20_000, random_state=pytensor.shared(np.random.default_rng(7))
+        ).eval()
+        u = ExtGenPareto.cdf(draws, 0.0, 1.0, xi, kappa).eval()
+        assert stats.kstest(u, "uniform").pvalue > 0.01
+
+
+@pytest.mark.parametrize("kappa", [0.5, 0.01])
+def test_small_kappa_ppf_uses_stable_excess(kappa):
+    median = ref_ext_ppf(0.5, 0.0, 1.0, 0.0, kappa)
+    assert median > 0.0
+
+    got = float(ExtGenPareto.ppf(0.5, 0.0, 1.0, 0.0, kappa).eval())
+    np.testing.assert_allclose(got, median, rtol=1e-6)
+
+
+def test_small_kappa_draws_do_not_collapse_to_mu():
+    draws = ExtGenPareto.rvs(
+        0.0, 1.0, 0.0, 0.01, size=20_000, random_state=pytensor.shared(np.random.default_rng(7))
+    ).eval()
+    assert (draws >= 0.0).all()
+    assert np.mean(draws == 0.0) < 0.01
+
+
+@pytest.mark.parametrize("dtype", ["float64", "float32"])
+def test_excess_from_logit_across_cutoff_for_huge_kappa(dtype):
+    y = pt.scalar("y", dtype=dtype)
+    kappa = pt.scalar("kappa", dtype=dtype)
+    m = ExtGenPareto._ext_gpd_excess_from_logit(y, kappa)
+    f = pytensor.function([y, kappa], [m, *pt.grad(m, [y, kappa])])
+    rtol = 1e-12 if dtype == "float64" else 1e-5
+    ys = [0.0, 200.0, 500.0, 680.0, 700.0, 730.0] if dtype == "float64" else [0.0, 50.0, 70.0, 85.0]
+    for yv in ys:
+        for kv in (1.0, 1e3, 1e8, 1e15):
+            m_val, dy, dk = f(np.asarray(yv, dtype), np.asarray(kv, dtype))
+            assert np.all(np.isfinite([m_val, dy, dk])), f"non-finite at y={yv}, kappa={kv}"
+            np.testing.assert_allclose(
+                float(m_val),
+                _ext_gpd_excess_ref(yv, kv),
+                rtol=rtol,
+                err_msg=f"excess wrong at y={yv}, kappa={kv}",
+            )
+
+
+def test_excess_from_logit_upper_tail_is_finite_under_float32():
+    y = pt.scalar("y", dtype="float32")
+    excess = ExtGenPareto._ext_gpd_excess_from_logit(y, np.float32(2.0))
+    assert excess.dtype == "float32"
+    fn = pytensor.function([y], excess)
+    for yi in (90.0, 200.0, 700.0, 5000.0):
+        m = float(fn(np.float32(yi)))
+        assert np.isfinite(m)
+        np.testing.assert_allclose(m, yi + np.log(2.0), rtol=1e-3)
+
+
+def test_excess_from_logit_resolves_subnormal_kappa_tail():
+    # kappa is passed symbolically rather than baked in: a constant subnormal kappa
+    # makes a graph rewrite fold ``x / kappa`` and overflow at compile time (the value
+    # is still correct, but it emits a spurious RuntimeWarning).
+    y = pt.dscalar("y")
+    kappa = pt.dscalar("kappa")
+    fn = pytensor.function([y, kappa], ExtGenPareto._ext_gpd_excess_from_logit(y, kappa))
+    excess = float(fn(710.0, 4e-309))
+    assert excess > 0.0
+    np.testing.assert_allclose(excess, 0.395390331, rtol=1e-4)
+
+
+def test_logsf_stable_in_far_tail():
+    for kappa in (0.5, 1.0, 2.5, 5.0):
+        x = np.array([100.0, 300.0, 1000.0])
+        got = ExtGenPareto.logsf(x, 0.0, 1.0, 0.0, kappa).eval()
+        assert np.all(np.isfinite(got))
+        np.testing.assert_allclose(got, np.log(kappa) - x, rtol=1e-9)
+
+
+@pytest.mark.parametrize("kappa", [10.0, 1e155, 1e300])
+def test_logsf_is_a_valid_log_probability_for_large_kappa(kappa):
+    x = np.array([40.0, 100.0, 1000.0])
+    kappa_t = pt.constant(np.asarray(kappa, dtype="float64"))
+    got = ExtGenPareto.logsf(x, 0.0, 1.0, 0.0, kappa_t).eval()
+    assert np.all(got <= 0.0)
+    small = np.log(kappa) - x < -30.0
+    np.testing.assert_allclose(got[small], (np.log(kappa) - x)[small], rtol=1e-9)
+
+
+@pytest.mark.parametrize("kappa", [1e-2, 1e-100])
+def test_logsf_small_kappa_in_the_body_matches_reference(kappa):
+    x = np.array([0.01, 0.1, 0.5, 2.0])
+    got = ExtGenPareto.logsf(x, 0.0, 1.0, 0.0, kappa).eval()
+    ref = np.log(-np.expm1(kappa * np.log1p(-np.exp(-x))))
+    np.testing.assert_allclose(got, ref, rtol=1e-9)
+
+
+@pytest.mark.parametrize("dtype", ["float64", "float32"])
+def test_summary_stats_follow_input_dtype(dtype):
+    """mean/var/std/skewness/kurtosis/entropy/median/lmoments keep the input dtype.
+
+    (Value precision under float32 is a separate matter -- the high-order central
+    moments cancel and lose accuracy in a small-|xi| band; only the dtype is asserted.)
+    """
+    params = [pt.scalar(name, dtype=dtype) for name in ("mu", "sigma", "xi", "kappa")]
+    names = ["mean", "var", "std", "skewness", "kurtosis", "entropy"]
+    names += ["median", "lmoment1", "lmoment2", "lmoment3", "lmoment4"]
+    for name in names:
+        assert getattr(ExtGenPareto, name)(*params).dtype == dtype, name
+
+
+def test_boundary_logp_value_holds_but_gradient_tracks_the_margin():
+    mu, sigma, xi, kappa = 0.4, 1.3, -0.3, 2.5
+    eps = np.finfo(np.float64).eps
+    margins = [1e-2, 1e-6, 1e-12]
+
+    v, sig, xs, ks = (pt.dscalar(n) for n in ("v", "sig", "xs", "ks"))
+    logp = ExtGenPareto.logpdf(v, mu, sig, xs, ks)
+    fn = pytensor.function(
+        [v, sig, xs, ks],
+        [logp, pt.grad(logp, sig), pt.grad(logp, xs), pt.grad(logp, ks)],
+    )
+
+    params = {
+        "mu": Decimal(mu),
+        "sigma": Decimal(sigma),
+        "xi": Decimal(xi),
+        "kappa": Decimal(kappa),
+    }
+    prev_logp = np.inf
+    for s_target in margins:
+        value = mu + sigma * ((s_target - 1) / xi)
+        logp_f, *grads_f = (float(o) for o in fn(value, sigma, xi, kappa))
+        logp_ref = _gpd_ref_logp(value, **params)
+
+        assert np.isfinite(logp_f), s_target
+        assert all(np.isfinite(g) for g in grads_f), s_target
+        assert logp_f < prev_logp, s_target
+        prev_logp = logp_f
+        assert abs((Decimal(logp_f) - logp_ref) / logp_ref) < 1e-4, s_target
+
+        grad_bound = 100 * eps / s_target
+        for name, g in zip(["sigma", "xi", "kappa"], grads_f):
+            g_ref = _gpd_ref_grad(value, params, name)
+            rel = abs((Decimal(g) - g_ref) / g_ref)
+            assert np.sign(g) == np.sign(float(g_ref)), (name, s_target)
+            if name == "kappa":
+                assert rel < 1e-10, (name, s_target, float(rel))
+            else:
+                assert rel < grad_bound, (name, s_target, float(rel))
+
+
+def test_logp_gradient_is_continuous_through_xi_zero():
+    xi = pt.dscalar("xi")
+    logp = ExtGenPareto.logpdf(pt.constant(2.3), 0.0, 1.0, xi, 2.0)
+    fn = pytensor.function([xi], [logp, pt.grad(logp, xi)], on_unused_input="ignore")
+
+    _, grad0 = fn(0.0)
+    assert np.isfinite(grad0)
+    _, grad_minus = fn(-1e-7)
+    _, grad_plus = fn(1e-7)
+    assert abs(grad_minus - grad0) < 1e-5
+    assert abs(grad_plus - grad0) < 1e-5
+    h = 1e-5
+    fd = (fn(h)[0] - fn(-h)[0]) / (2 * h)
+    assert abs(grad0 - fd) < 1e-5
