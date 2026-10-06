@@ -1,3 +1,17 @@
+<a id="v0.3.3"></a>
+# [v0.3.3](https://github.com/pymc-devs/pytensor-distributions/releases/tag/v0.3.3) - 2026-10-06
+
+## What's Changed
+* Robustify and test array inputs by [@aloctavodia](https://github.com/aloctavodia) in [#72](https://github.com/pymc-devs/pytensor-distributions/pull/72)
+* Add LKJ Corr by [@rohanbabbar04](https://github.com/rohanbabbar04) in [#73](https://github.com/pymc-devs/pytensor-distributions/pull/73)
+* Test for graph optimizations and rewrite some functions by [@aloctavodia](https://github.com/aloctavodia) in [#74](https://github.com/pymc-devs/pytensor-distributions/pull/74)
+
+
+**Full Changelog**: https://github.com/pymc-devs/pytensor-distributions/compare/v0.3.2...v0.3.3
+
+[Changes][v0.3.3]
+
+
 <a id="v0.3.2"></a>
 # [v0.3.2](https://github.com/pymc-devs/pytensor-distributions/releases/tag/v0.3.2) - 2026-09-04
 
@@ -141,6 +155,7 @@
 [Changes][v0.1.0]
 
 
+[v0.3.3]: https://github.com/pymc-devs/pytensor-distributions/compare/v0.3.2...v0.3.3
 [v0.3.2]: https://github.com/pymc-devs/pytensor-distributions/compare/v0.3.1...v0.3.2
 [v0.3.1]: https://github.com/pymc-devs/pytensor-distributions/compare/v0.3.0...v0.3.1
 [v0.3.0]: https://github.com/pymc-devs/pytensor-distributions/compare/v0.2.0...v0.3.0
